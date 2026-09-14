@@ -39,17 +39,16 @@ def _normalize(value: str) -> str:
 
 def _fingerprint(payload: JobPostingUpsert) -> str:
     if payload.external_id and payload.source_platform:
-        identity = "external|{}|{}".format(
-            _normalize(payload.source_platform), _normalize(payload.external_id)
-        )
+        platform = _normalize(payload.source_platform)
+        external_id = _normalize(payload.external_id)
+        identity = f"external|{platform}|{external_id}"
     elif payload.source_url:
         identity = f"url|{payload.source_url.strip()}"
     else:
-        identity = "fallback|{}|{}|{}".format(
-            _normalize(payload.company_name),
-            _normalize(payload.title),
-            _normalize(payload.location_text or ""),
-        )
+        company = _normalize(payload.company_name)
+        title = _normalize(payload.title)
+        location = _normalize(payload.location_text or "")
+        identity = f"fallback|{company}|{title}|{location}"
     return hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
 
