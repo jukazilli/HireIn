@@ -111,26 +111,26 @@ async def replace_profile(
         )
     )
 
-    for item in payload.experiences:
-        source_type, confidence, confirmed_at = _provenance(item)
+    for experience_input in payload.experiences:
+        source_type, confidence, confirmed_at = _provenance(experience_input)
         experience = CandidateExperience(
             profile_id=profile.id,
-            company_name=item.company_name.strip(),
-            role_title=item.role_title.strip(),
-            start_date=item.start_date,
-            end_date=item.end_date,
-            is_current=item.is_current,
-            location=item.location,
-            description=item.description,
+            company_name=experience_input.company_name.strip(),
+            role_title=experience_input.role_title.strip(),
+            start_date=experience_input.start_date,
+            end_date=experience_input.end_date,
+            is_current=experience_input.is_current,
+            location=experience_input.location,
+            description=experience_input.description,
             source_type=source_type,
-            source_ref=item.source_ref,
+            source_ref=experience_input.source_ref,
             confidence=confidence,
             confirmed_at=confirmed_at,
         )
         session.add(experience)
         await session.flush()
 
-        for fact in item.facts:
+        for fact in experience_input.facts:
             fact_source, fact_confidence, fact_confirmed_at = _provenance(fact)
             session.add(
                 CandidateFact(
@@ -145,70 +145,70 @@ async def replace_profile(
                 )
             )
 
-    for item in payload.education:
-        source_type, confidence, confirmed_at = _provenance(item)
+    for education_input in payload.education:
+        source_type, confidence, confirmed_at = _provenance(education_input)
         session.add(
             CandidateEducation(
                 profile_id=profile.id,
-                institution=item.institution.strip(),
-                course=item.course.strip(),
-                degree_type=item.degree_type,
-                status=item.status.value,
-                start_date=item.start_date,
-                end_date=item.end_date,
+                institution=education_input.institution.strip(),
+                course=education_input.course.strip(),
+                degree_type=education_input.degree_type,
+                status=education_input.status.value,
+                start_date=education_input.start_date,
+                end_date=education_input.end_date,
                 source_type=source_type,
-                source_ref=item.source_ref,
+                source_ref=education_input.source_ref,
                 confidence=confidence,
                 confirmed_at=confirmed_at,
             )
         )
 
-    for item in payload.skills:
-        source_type, confidence, confirmed_at = _provenance(item)
+    for skill_input in payload.skills:
+        source_type, confidence, confirmed_at = _provenance(skill_input)
         session.add(
             CandidateSkill(
                 profile_id=profile.id,
-                name=item.name.strip(),
-                normalized_name=_normalized_name(item.name),
-                category=item.category,
-                level=item.level.value if item.level is not None else None,
-                years_experience=Decimal(str(item.years_experience))
-                if item.years_experience is not None
+                name=skill_input.name.strip(),
+                normalized_name=_normalized_name(skill_input.name),
+                category=skill_input.category,
+                level=skill_input.level.value if skill_input.level is not None else None,
+                years_experience=Decimal(str(skill_input.years_experience))
+                if skill_input.years_experience is not None
                 else None,
                 source_type=source_type,
-                source_ref=item.source_ref,
+                source_ref=skill_input.source_ref,
                 confidence=confidence,
                 confirmed_at=confirmed_at,
             )
         )
 
-    for item in payload.certifications:
-        source_type, confidence, confirmed_at = _provenance(item)
+    for certification_input in payload.certifications:
+        source_type, confidence, confirmed_at = _provenance(certification_input)
         session.add(
             CandidateCertification(
                 profile_id=profile.id,
-                name=item.name.strip(),
-                issuer=item.issuer,
-                issued_date=item.issued_date,
-                expires_date=item.expires_date,
-                credential_url=item.credential_url,
+                name=certification_input.name.strip(),
+                issuer=certification_input.issuer,
+                issued_date=certification_input.issued_date,
+                expires_date=certification_input.expires_date,
+                credential_url=certification_input.credential_url,
                 source_type=source_type,
-                source_ref=item.source_ref,
+                source_ref=certification_input.source_ref,
                 confidence=confidence,
                 confirmed_at=confirmed_at,
             )
         )
 
-    for item in payload.languages:
-        source_type, confidence, confirmed_at = _provenance(item)
+    for language_input in payload.languages:
+        source_type, confidence, confirmed_at = _provenance(language_input)
         session.add(
             CandidateLanguage(
                 profile_id=profile.id,
-                name=item.name.strip(),
-                normalized_name=_normalized_name(item.name),
-                proficiency=item.proficiency.value,
+                name=language_input.name.strip(),
+                normalized_name=_normalized_name(language_input.name),
+                proficiency=language_input.proficiency.value,
                 source_type=source_type,
-                source_ref=item.source_ref,
+                source_ref=language_input.source_ref,
                 confidence=confidence,
                 confirmed_at=confirmed_at,
             )
@@ -263,18 +263,18 @@ async def _to_response(
         preferences=CareerPreferenceResponse.model_validate(preference),
         experiences=[
             ExperienceResponse(
-                id=item.id,
-                company_name=item.company_name,
-                role_title=item.role_title,
-                start_date=item.start_date,
-                end_date=item.end_date,
-                is_current=item.is_current,
-                location=item.location,
-                description=item.description,
-                source_type=FactSource(item.source_type),
-                source_ref=item.source_ref,
-                confidence=float(item.confidence),
-                confirmed_at=item.confirmed_at,
+                id=experience.id,
+                company_name=experience.company_name,
+                role_title=experience.role_title,
+                start_date=experience.start_date,
+                end_date=experience.end_date,
+                is_current=experience.is_current,
+                location=experience.location,
+                description=experience.description,
+                source_type=FactSource(experience.source_type),
+                source_ref=experience.source_ref,
+                confidence=float(experience.confidence),
+                confirmed_at=experience.confirmed_at,
                 facts=[
                     CandidateFactResponse(
                         id=fact.id,
@@ -285,10 +285,10 @@ async def _to_response(
                         confidence=float(fact.confidence),
                         confirmed_at=fact.confirmed_at,
                     )
-                    for fact in item.facts
+                    for fact in experience.facts
                 ],
             )
-            for item in profile.experiences
+            for experience in profile.experiences
         ],
         education=[EducationResponse.model_validate(item) for item in profile.education],
         skills=[SkillResponse.model_validate(item) for item in profile.skills],
