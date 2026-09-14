@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** HireIn Match v0 implementado e em validação; o próximo gate é formar o dataset real do piloto com 30–50 vagas avaliadas.
+> **Fase atual:** baseline de avaliação do Match implementada; próximo gate de produto é acumular aproximadamente 30–50 vagas brasileiras reais rotuladas localmente.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -35,7 +35,8 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 11. [Candidate Core](docs/11-CANDIDATE-CORE.md)
 12. [Job Core](docs/12-JOB-CORE.md)
 13. [HireIn Match v0](docs/13-MATCH-V0.md)
-14. [Architecture Decision Records](docs/adr/README.md)
+14. [Pilot Evaluation Dataset](docs/14-PILOT-EVALS.md)
+15. [Architecture Decision Records](docs/adr/README.md)
 
 O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
@@ -147,6 +148,35 @@ A interface de validação fica em `/jobs/match` e mostra score, band, cobertura
 
 Se menos de 60% do peso dos requisitos puder ser avaliado, o sistema retorna `INSUFFICIENT_DATA` em vez de inventar precisão. Preferências comuns não viram blockers automáticos.
 
+## Pilot Evaluation Dataset
+
+A Etapa E adiciona a baseline que mede o ranking do Match antes de qualquer IA:
+
+```text
+vagas reais locais
+      +
+labels humanas 0–4
+      ↓
+Match v0
+      ↓
+Recall@5 / Recall@10
+NDCG@5 / NDCG@10
+cobertura média
+      ↓
+classificação dos erros
+```
+
+Os dados reais permanecem em `.local-data/`, fora do Git. O repositório guarda apenas código, documentação e fixtures sintéticas.
+
+O fluxo local é:
+
+```bash
+uv run --package hirein-api python scripts/pilot_eval.py import
+uv run --package hirein-api python scripts/pilot_eval.py evaluate
+```
+
+O relatório é gerado localmente em JSON e Markdown. Vagas sem score por falta de cobertura ficam depois das vagas avaliadas no ranking, tornando o problema de evidência visível.
+
 ## Orçamento do piloto
 
 Meta inicial:
@@ -183,15 +213,19 @@ O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-O próximo gate não é adicionar IA. É formar um dataset real de aproximadamente **30–50 vagas brasileiras** e registrar manualmente:
+O próximo trabalho é operacional, não uma nova camada de IA: acumular aproximadamente **30–50 vagas brasileiras reais**, rotular sua relevância humana e revisar os erros da baseline.
 
-- se a vaga realmente interessa;
-- quais requisitos foram identificados corretamente;
-- quais matches e gaps fazem sentido;
-- falsos negativos por sinônimo ou contexto;
-- erros de ordenação do score.
+O dataset deve revelar se os principais problemas são:
 
-Esses dados decidirão se o ganho seguinte vem de regras melhores, aliases/taxonomia, embeddings, reranking ou LLM. A tecnologia só entra depois que o problema estiver medido.
+- evidência ausente no perfil;
+- normalização ruim da vaga;
+- aliases simples;
+- equivalência semântica;
+- regras de preferência;
+- cobertura insuficiente;
+- pesos de ranking.
+
+Só depois disso será decidido se o ganho seguinte vem de regras melhores, aliases/taxonomia, embeddings, reranking ou LLM.
 
 A ordem detalhada e os critérios de aceite permanecem em `docs/09-IMPLEMENTATION-PLAN.md`.
 

@@ -1,0 +1,28 @@
+{
+  "source_kind": "MANUAL",
+  "company_name": "Empresa Fictícia Beta",
+  "title": "Especialista Cloud",
+  "location_text": "Outra Cidade - SP",
+  "city": "Outra Cidade",
+  "state": "SP",
+  "country_code": "BR",
+  "work_model": "ONSITE",
+  "contract_type": "PJ",
+  "seniority": "SPECIALIST",
+  "description_raw": "Fixture inteiramente sintética de uma oportunidade pouco aderente.",
+  "salary_currency": "BRL",
+  "requirements": [
+    {
+      "kind": "SKILL",
+      "importance": "REQUIRED",
+      "value": "Kubernetes",
+      "source_text": "Domínio de Kubernetes é obrigatório."
+    },
+    {
+      "kind": "DOMAIN",
+      "importance": "REQUIRED",
+      "value": "Cloud Infrastructure",
+      "source_text": "Experiência sólida com infraestrutura cloud."
+    }
+  ]
+}

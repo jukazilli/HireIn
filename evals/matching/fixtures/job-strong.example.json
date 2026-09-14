@@ -1,0 +1,31 @@
+{
+  "source_kind": "MANUAL",
+  "company_name": "Empresa Fictícia Alpha",
+  "title": "Analista de Implantação ERP",
+  "location_text": "Cidade Exemplo - SC",
+  "city": "Cidade Exemplo",
+  "state": "SC",
+  "country_code": "BR",
+  "work_model": "REMOTE",
+  "contract_type": "CLT",
+  "seniority": "MID",
+  "description_raw": "Fixture inteiramente sintética para validar o formato do dataset de avaliação.",
+  "salary_min": 7000,
+  "salary_max": 9000,
+  "salary_currency": "BRL",
+  "salary_period": "MONTH",
+  "requirements": [
+    {
+      "kind": "SKILL",
+      "importance": "REQUIRED",
+      "value": "SQL",
+      "source_text": "Conhecimento de SQL é obrigatório."
+    },
+    {
+      "kind": "TOOL",
+      "importance": "PREFERRED",
+      "value": "ERP Exemplo",
+      "source_text": "Experiência com ERP Exemplo será um diferencial."
+    }
+  ]
+}
