@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** fundação técnica implementada; próxima etapa é o Candidate Core da primeira vertical slice do piloto individual.
+> **Fase atual:** Candidate Core implementado e em validação; próximo domínio após o gate é o Job Core.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -32,7 +32,8 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 8. [Roadmap orientado a validação](docs/08-ROADMAP.md)
 9. [Plano da primeira implementação](docs/09-IMPLEMENTATION-PLAN.md)
 10. [Bootstrap técnico](docs/10-BOOTSTRAP.md)
-11. [Architecture Decision Records](docs/adr/README.md)
+11. [Candidate Core](docs/11-CANDIDATE-CORE.md)
+12. [Architecture Decision Records](docs/adr/README.md)
 
 O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
@@ -56,7 +57,7 @@ As decisões estruturais possuem ADRs com contexto, alternativas, trade-offs e g
 
 ## Fundação técnica
 
-A Etapa A do plano de implementação já possui uma baseline executável com:
+A Etapa A possui uma baseline executável com:
 
 - monorepo TypeScript + Python;
 - SvelteKit/Svelte no frontend;
@@ -68,7 +69,33 @@ A Etapa A do plano de implementação já possui uma baseline executável com:
 - `uv.lock` e `pnpm-lock.yaml` versionados;
 - CI com instalações bloqueadas e checks de frontend, backend, migrations e contrato.
 
-Nenhum LLM, embedding, ATS adapter, extensão ou Auto Apply foi introduzido no bootstrap.
+## Candidate Core
+
+A Etapa B introduz a primeira fonte de verdade profissional do HireIn.
+
+```text
+CandidateProfile
+│
+├── identidade profissional
+├── preferências de carreira
+├── experiências
+│   └── fatos/evidências
+├── formação
+├── skills
+├── certificações
+└── idiomas
+```
+
+Fatos carregam proveniência (`USER_CONFIRMED`, `RESUME_EXTRACTED`, `AI_DRAFT` etc.) para impedir que inferências futuras sejam tratadas como verdades sem confirmação humana.
+
+No piloto existe um único perfil primário e a edição ocorre por:
+
+```text
+GET /api/v1/profile
+PUT /api/v1/profile
+```
+
+A interface atual é manual e deixa IA e Auto Apply desligados.
 
 ## Orçamento do piloto
 
@@ -106,23 +133,23 @@ O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-A próxima implementação é o **Candidate Core**, primeiro domínio funcional da vertical slice:
+Após o Candidate Core passar pelo gate técnico, entra o **Job Core**:
 
 ```text
-perfil estruturado
+vaga bruta
      ↓
-fatos com proveniência
+normalização
      ↓
-preferências profissionais
+requisitos estruturados
      ↓
-API + persistência
+blockers e preferências
      ↓
-interface de edição
+base para HireIn Match
 ```
 
-Depois entram Job Core, Match determinístico e Application Draft, nessa ordem.
+O primeiro Job Core também deverá funcionar sem LLM como dependência obrigatória. IA só entra quando houver tarefa, dataset e avaliação que justifiquem seu uso.
 
-A ordem detalhada, critérios de aceite e limites dessa implementação estão em `docs/09-IMPLEMENTATION-PLAN.md`.
+A ordem detalhada e os critérios de aceite permanecem em `docs/09-IMPLEMENTATION-PLAN.md`.
 
 Não haverá Auto Apply irrestrito no primeiro marco.
 
