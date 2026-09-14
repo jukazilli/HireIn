@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** Job Core implementado e em validação; próximo domínio após o gate é o HireIn Match v0.
+> **Fase atual:** HireIn Match v0 implementado e em validação; o próximo gate é formar o dataset real do piloto com 30–50 vagas avaliadas.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -34,7 +34,8 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 10. [Bootstrap técnico](docs/10-BOOTSTRAP.md)
 11. [Candidate Core](docs/11-CANDIDATE-CORE.md)
 12. [Job Core](docs/12-JOB-CORE.md)
-13. [Architecture Decision Records](docs/adr/README.md)
+13. [HireIn Match v0](docs/13-MATCH-V0.md)
+14. [Architecture Decision Records](docs/adr/README.md)
 
 O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
@@ -116,6 +117,36 @@ PUT  /api/v1/jobs/{id}
 
 A interface de validação fica em `/jobs`. Parsing por IA, scraping e Auto Apply continuam desligados.
 
+## HireIn Match v0
+
+O Match conecta Candidate Core e Job Core sem embeddings ou LLM:
+
+```text
+Candidate Core
+      +
+Job Core
+      ↓
+evidências confirmadas
+      ↓
+MATCHED / GAP / UNKNOWN
+      +
+preferências separadas
+      ↓
+score + cobertura + explicação
+```
+
+Somente dados `USER_CONFIRMED` podem aumentar o score. `AI_DRAFT`, dados extraídos ainda não confirmados e inferências de sistema ficam excluídos da pontuação.
+
+A avaliação é calculada sob demanda por:
+
+```text
+GET /api/v1/jobs/{id}/match
+```
+
+A interface de validação fica em `/jobs/match` e mostra score, band, cobertura, evidências, gaps, itens não avaliáveis e conflitos de preferência.
+
+Se menos de 60% do peso dos requisitos puder ser avaliado, o sistema retorna `INSUFFICIENT_DATA` em vez de inventar precisão. Preferências comuns não viram blockers automáticos.
+
 ## Orçamento do piloto
 
 Meta inicial:
@@ -152,23 +183,15 @@ O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-Depois do gate do Job Core começa o **HireIn Match v0**:
+O próximo gate não é adicionar IA. É formar um dataset real de aproximadamente **30–50 vagas brasileiras** e registrar manualmente:
 
-```text
-Candidate Core
-      +
-Job Core
-      ↓
-blockers
-      ↓
-compatibilidades
-      ↓
-gaps
-      ↓
-score explicável
-```
+- se a vaga realmente interessa;
+- quais requisitos foram identificados corretamente;
+- quais matches e gaps fazem sentido;
+- falsos negativos por sinônimo ou contexto;
+- erros de ordenação do score.
 
-O primeiro Match deve funcionar majoritariamente com regras determinísticas. Embeddings ou LLMs só entram quando os casos ambíguos estiverem medidos e houver dataset PT-BR para avaliar ganho real.
+Esses dados decidirão se o ganho seguinte vem de regras melhores, aliases/taxonomia, embeddings, reranking ou LLM. A tecnologia só entra depois que o problema estiver medido.
 
 A ordem detalhada e os critérios de aceite permanecem em `docs/09-IMPLEMENTATION-PLAN.md`.
 

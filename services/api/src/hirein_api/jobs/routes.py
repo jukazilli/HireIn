@@ -15,6 +15,12 @@ from hirein_api.jobs.service import (
     list_job_postings,
     update_job_posting,
 )
+from hirein_api.match.schemas import JobMatchResponse
+from hirein_api.match.service import (
+    MatchJobNotFoundError,
+    MatchProfileNotFoundError,
+    calculate_job_match,
+)
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -36,6 +42,22 @@ async def create_job(
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/{job_id}/match", response_model=JobMatchResponse, tags=["match"])
+async def read_job_match(job_id: uuid.UUID, session: SessionDep) -> JobMatchResponse:
+    try:
+        return await calculate_job_match(session, job_id)
+    except MatchProfileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except MatchJobNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
 
