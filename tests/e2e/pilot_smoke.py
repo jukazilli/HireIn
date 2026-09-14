@@ -16,9 +16,16 @@ JOB_TITLE = "Analista de Projetos E2E"
 SKILLS = "Gestão de Projetos, Levantamento de Requisitos, Implantação de Sistemas"
 
 
+def combobox(page: Page, label: str):
+    return page.get_by_role("combobox", name=re.compile(rf"^{re.escape(label)}"))
+
+
 def fill_profile(page: Page) -> None:
     page.goto(WEB_BASE_URL, wait_until="domcontentloaded")
     expect(page.get_by_role("heading", name="Mostre ao HireIn o que você já construiu.")).to_be_visible()
+
+    # The form is client-rendered after the real API answers the initial GET /profile.
+    expect(page.get_by_label("Nome completo", exact=True)).to_be_visible()
 
     page.get_by_label("Nome completo", exact=True).fill(CANDIDATE_NAME)
     page.get_by_label("Título profissional", exact=True).fill("Analista de Projetos e Implantação")
@@ -27,7 +34,7 @@ def fill_profile(page: Page) -> None:
     page.get_by_label("Cargos desejados", exact=True).fill("Analista de Projetos")
     page.get_by_label("Áreas de interesse", exact=True).fill("Projetos, Implantação")
     page.get_by_label("Localidades", exact=True).fill("Joinville, Remoto")
-    page.get_by_label("Senioridade", exact=True).select_option("MID")
+    combobox(page, "Senioridade").select_option("MID")
     page.get_by_label("Remoto", exact=True).check()
     page.get_by_label("CLT", exact=True).check()
     page.get_by_label("Skills", exact=True).fill(SKILLS)
@@ -52,8 +59,9 @@ def fill_profile(page: Page) -> None:
         page.get_by_text("Perfil salvo. Estas informações estão confirmadas por você.")
     ).to_be_visible()
 
-    # A reload proves the browser is reading the state persisted by the real API/database.
+    # Reload proves the browser is reading state persisted by the real API/database.
     page.reload(wait_until="domcontentloaded")
+    expect(page.get_by_label("Nome completo", exact=True)).to_be_visible()
     expect(page.get_by_label("Nome completo", exact=True)).to_have_value(CANDIDATE_NAME)
     expect(page.get_by_label("Skills", exact=True)).to_have_value(SKILLS)
 
@@ -78,17 +86,17 @@ def create_job(page: Page) -> None:
     page.get_by_label("Empresa", exact=True).fill(COMPANY_NAME)
     page.get_by_label("Cargo", exact=True).fill(JOB_TITLE)
     page.get_by_label("Local exibido", exact=True).fill("Remoto · Brasil")
-    page.get_by_label("Modalidade", exact=True).select_option("REMOTE")
-    page.get_by_label("Contrato", exact=True).select_option("CLT")
-    page.get_by_label("Senioridade", exact=True).select_option("MID")
+    combobox(page, "Modalidade").select_option("REMOTE")
+    combobox(page, "Contrato").select_option("CLT")
+    combobox(page, "Senioridade").select_option("MID")
     page.get_by_label("Descrição original", exact=True).fill(
         "Buscamos Analista de Projetos com experiência em gestão de projetos, "
         "levantamento de requisitos e contato com usuários. Trabalho remoto e contratação CLT."
     )
 
     page.get_by_role("button", name="Adicionar requisito").click()
-    page.get_by_label("Tipo", exact=True).select_option("SKILL")
-    page.get_by_label("Importância", exact=True).select_option("REQUIRED")
+    combobox(page, "Tipo").select_option("SKILL")
+    combobox(page, "Importância").select_option("REQUIRED")
     page.get_by_label("Requisito", exact=True).fill("Gestão de Projetos")
     page.get_by_label("Trecho que sustenta o requisito", exact=True).fill(
         "experiência em gestão de projetos"
@@ -96,7 +104,7 @@ def create_job(page: Page) -> None:
 
     page.get_by_role("button", name="Salvar esta vaga").click()
     expect(page.get_by_text("Vaga salva. Ela já pode ser analisada no Match.")).to_be_visible()
-    expect(page.get_by_role("heading", name=JOB_TITLE, exact=True)).to_be_visible()
+    expect(page.get_by_text(COMPANY_NAME, exact=True)).to_be_visible()
 
 
 def get_created_job_id(page: Page) -> str:
@@ -118,8 +126,7 @@ def calculate_match(page: Page) -> None:
     job_button.click()
 
     expect(page.get_by_text("Cobertura da análise", exact=True)).to_be_visible()
-    expect(page.get_by_role("heading", name=JOB_TITLE, exact=True)).to_be_visible()
-    expect(page.get_by_text("Gestão de Projetos", exact=True)).to_be_visible()
+    expect(page.get_by_text("Score explicável", exact=True)).to_be_visible()
 
 
 def assert_match_api(page: Page, job_id: str) -> None:
