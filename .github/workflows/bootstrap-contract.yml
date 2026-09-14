@@ -35,14 +35,21 @@ jobs:
         run: |
           uv run --package hirein-api python scripts/export_openapi.py
           pnpm generate:api-types
-      - name: Commit generated schema
+      - name: Apply frontend contract refactor
+        run: python scripts/refactor_frontend_contracts.py
+      - name: Commit generated and refactored files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f packages/generated-client/src/schema.d.ts
+          git add apps/web/src/routes/+page.svelte
+          git add apps/web/src/routes/jobs/+page.svelte
+          git add apps/web/src/routes/jobs/match/+page.svelte
+          git add apps/web/src/routes/jobs/review/+page.svelte
+          git add apps/web/src/routes/pilot/+page.svelte
           if git diff --cached --quiet; then
-            echo "Contract already current."
+            echo "Generated contract and frontend are already current."
             exit 0
           fi
-          git commit -m "chore: version generated API contract"
+          git commit -m "refactor: consume generated API contract in frontend"
           git push origin HEAD:chore/contract-first-frontend
