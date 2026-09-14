@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** documentação-base concluída e preparação da primeira vertical slice do piloto individual.
+> **Fase atual:** fundação técnica implementada; próxima etapa é o Candidate Core da primeira vertical slice do piloto individual.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -31,7 +31,8 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 7. [Privacy, Security & LGPD](docs/07-PRIVACY-SECURITY-LGPD.md)
 8. [Roadmap orientado a validação](docs/08-ROADMAP.md)
 9. [Plano da primeira implementação](docs/09-IMPLEMENTATION-PLAN.md)
-10. [Architecture Decision Records](docs/adr/README.md)
+10. [Bootstrap técnico](docs/10-BOOTSTRAP.md)
+11. [Architecture Decision Records](docs/adr/README.md)
 
 O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
@@ -52,6 +53,22 @@ O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agente
 | Execução do piloto | local-first |
 
 As decisões estruturais possuem ADRs com contexto, alternativas, trade-offs e gatilhos de revisão. LLM e embeddings permanecem propositalmente sem escolha definitiva até existirem evals com dados PT-BR representativos.
+
+## Fundação técnica
+
+A Etapa A do plano de implementação já possui uma baseline executável com:
+
+- monorepo TypeScript + Python;
+- SvelteKit/Svelte no frontend;
+- FastAPI no core;
+- PostgreSQL + pgvector para desenvolvimento e CI;
+- SQLAlchemy + Alembic;
+- health checks de liveness e readiness;
+- OpenAPI como fonte do contrato para TypeScript;
+- `uv.lock` e `pnpm-lock.yaml` versionados;
+- CI com instalações bloqueadas e checks de frontend, backend, migrations e contrato.
+
+Nenhum LLM, embedding, ATS adapter, extensão ou Auto Apply foi introduzido no bootstrap.
 
 ## Orçamento do piloto
 
@@ -89,27 +106,25 @@ O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-A primeira implementação deverá ser uma vertical slice pequena:
+A próxima implementação é o **Candidate Core**, primeiro domínio funcional da vertical slice:
 
 ```text
-1 perfil real
+perfil estruturado
      ↓
-1 vaga real
+fatos com proveniência
      ↓
-normalização
+preferências profissionais
      ↓
-Match explicável
+API + persistência
      ↓
-currículo/respostas preparados
-     ↓
-revisão humana
+interface de edição
 ```
 
-Depois o experimento cresce para aproximadamente 30–50 vagas, criando o primeiro dataset brasileiro para avaliar matching e orientar a escolha de embeddings.
-
-Não haverá Auto Apply irrestrito no primeiro marco.
+Depois entram Job Core, Match determinístico e Application Draft, nessa ordem.
 
 A ordem detalhada, critérios de aceite e limites dessa implementação estão em `docs/09-IMPLEMENTATION-PLAN.md`.
+
+Não haverá Auto Apply irrestrito no primeiro marco.
 
 ## Governança técnica
 
