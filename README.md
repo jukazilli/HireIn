@@ -30,7 +30,10 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 6. [Custos](docs/06-COSTS.md)
 7. [Privacy, Security & LGPD](docs/07-PRIVACY-SECURITY-LGPD.md)
 8. [Roadmap orientado a validação](docs/08-ROADMAP.md)
-9. [Architecture Decision Records](docs/adr/README.md)
+9. [Plano da primeira implementação](docs/09-IMPLEMENTATION-PLAN.md)
+10. [Architecture Decision Records](docs/adr/README.md)
+
+O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
 ## Decisões técnicas atuais
 
@@ -105,6 +108,8 @@ revisão humana
 Depois o experimento cresce para aproximadamente 30–50 vagas, criando o primeiro dataset brasileiro para avaliar matching e orientar a escolha de embeddings.
 
 Não haverá Auto Apply irrestrito no primeiro marco.
+
+A ordem detalhada, critérios de aceite e limites dessa implementação estão em `docs/09-IMPLEMENTATION-PLAN.md`.
 
 ## Governança técnica
 
