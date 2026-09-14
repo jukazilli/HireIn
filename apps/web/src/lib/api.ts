@@ -15,6 +15,17 @@ export type PilotEvaluation = Schemas['PilotEvaluationResponse'];
 export type PilotEvaluationUpsert = Schemas['PilotEvaluationUpsert'];
 export type PilotEvalReport = Schemas['PilotEvalReportResponse'];
 export type EvaluationErrorCategory = Schemas['EvaluationErrorCategory'];
+export type WorkModel = Schemas['WorkModel'];
+export type ContractType = Schemas['ContractType'];
+export type Seniority = Schemas['Seniority'];
+export type EducationStatus = Schemas['EducationStatus'];
+export type LanguageProficiency = Schemas['LanguageProficiency'];
+export type JobSourceKind = Schemas['JobSourceKind'];
+export type JobStatus = Schemas['JobStatus'];
+export type SalaryPeriod = Schemas['SalaryPeriod'];
+export type RequirementKind = Schemas['RequirementKind'];
+export type RequirementImportance = Schemas['RequirementImportance'];
+export type FactKind = Schemas['FactKind'];
 
 export class ApiError extends Error {
   constructor(
