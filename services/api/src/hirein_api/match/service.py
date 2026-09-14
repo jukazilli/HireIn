@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -136,15 +135,14 @@ def _match_skill(
         )
 
     target = requirement.normalized_value
-    matching = [item for item in index.skills if item.normalized_name == target]
-    if not matching:
+    skill = next((item for item in index.skills if item.normalized_name == target), None)
+    if skill is None:
         return _result(
             requirement,
             RequirementMatchStatus.GAP,
-            "Há skills confirmadas no perfil, mas nenhuma corresponde exatamente ao requisito.",
+            "Há skills confirmadas, mas nenhuma corresponde exatamente ao requisito.",
         )
 
-    skill = matching[0]
     detail = (
         f"{skill.years_experience} anos informados"
         if skill.years_experience is not None
@@ -158,15 +156,13 @@ def _match_skill(
             "Skill confirmada com correspondência exata.",
             evidence,
         )
-
     if skill.years_experience is None:
         return _result(
             requirement,
             RequirementMatchStatus.UNKNOWN,
-            "A skill existe, mas o perfil não informa anos de experiência para validar o mínimo.",
+            "A skill existe, mas faltam anos de experiência para validar o mínimo.",
             evidence,
         )
-
     if skill.years_experience >= requirement.min_years:
         return _result(
             requirement,
@@ -174,11 +170,10 @@ def _match_skill(
             "Skill confirmada e tempo de experiência suficiente.",
             evidence,
         )
-
     return _result(
         requirement,
         RequirementMatchStatus.GAP,
-        "A skill existe, mas o tempo de experiência confirmado é inferior ao mínimo da vaga.",
+        "A skill existe, mas o tempo confirmado é inferior ao mínimo da vaga.",
         evidence,
     )
 
@@ -191,7 +186,10 @@ def _match_tool(
         return _result(
             requirement,
             RequirementMatchStatus.UNKNOWN,
-            "O perfil não possui skills ou fatos de ferramenta confirmados para avaliar este requisito.",
+            (
+                "O perfil não possui skills ou fatos de ferramenta confirmados "
+                "para avaliar este requisito."
+            ),
         )
 
     target = requirement.normalized_value
@@ -216,7 +214,7 @@ def _match_tool(
     return _result(
         requirement,
         RequirementMatchStatus.GAP,
-        "Há evidências confirmadas de ferramentas no perfil, mas nenhuma corresponde exatamente.",
+        "Há ferramentas confirmadas, mas nenhuma corresponde exatamente ao requisito.",
     )
 
 
@@ -239,9 +237,8 @@ def _match_fact_kind(
         return _result(
             requirement,
             RequirementMatchStatus.GAP,
-            "Há fatos confirmados avaliáveis, mas nenhum corresponde exatamente ao requisito.",
+            "Há fatos confirmados avaliáveis, mas nenhum corresponde exatamente.",
         )
-
     return _result(
         requirement,
         RequirementMatchStatus.MATCHED,
@@ -300,7 +297,7 @@ def _match_certification(
         return _result(
             requirement,
             RequirementMatchStatus.GAP,
-            "Há certificações confirmadas, mas nenhuma corresponde exatamente ao requisito.",
+            "Há certificações confirmadas, mas nenhuma corresponde exatamente.",
         )
     return _result(
         requirement,
@@ -341,7 +338,7 @@ def _match_education(
         return _result(
             requirement,
             RequirementMatchStatus.GAP,
-            "Há formação confirmada, mas curso e tipo de graduação não correspondem exatamente.",
+            "Há formação confirmada, mas curso e graduação não correspondem exatamente.",
         )
     return _result(
         requirement,
@@ -376,7 +373,7 @@ def _match_experience(
         return _result(
             requirement,
             RequirementMatchStatus.GAP,
-            "Há experiências confirmadas, mas nenhum cargo corresponde exatamente ao requisito.",
+            "Há experiências confirmadas, mas nenhum cargo corresponde exatamente.",
         )
     return _result(
         requirement,
@@ -430,12 +427,12 @@ def _evaluate_requirement(
         return _result(
             requirement,
             RequirementMatchStatus.UNKNOWN,
-            "Este tipo é tratado na camada de preferências e não como evidência profissional.",
+            "Este tipo é avaliado na camada de preferências, não como evidência.",
         )
     return _result(
         requirement,
         RequirementMatchStatus.UNKNOWN,
-        "O algoritmo determinístico v0 não avalia este tipo de requisito com segurança.",
+        "O algoritmo v0 não avalia este tipo de requisito com segurança.",
     )
 
 
@@ -455,6 +452,158 @@ def _preference_result(
     )
 
 
+def _evaluate_title(
+    preference: CareerPreference, job: JobPosting
+) -> PreferenceMatchResponse:
+    desired = list(preference.desired_titles)
+    if not desired:
+        return _preference_result(
+            PreferenceAspect.TITLE,
+            PreferenceMatchStatus.UNKNOWN,
+            [],
+            [job.title],
+            "Nenhum título desejado foi informado.",
+        )
+    aligned = any(_normalize(item) == _normalize(job.title) for item in desired)
+    reason = (
+        "Título corresponde exatamente a uma preferência."
+        if aligned
+        else (
+            "Títulos diferentes não são tratados como conflito no v0; "
+            "sinônimos não são inferidos."
+        )
+    )
+    return _preference_result(
+        PreferenceAspect.TITLE,
+        PreferenceMatchStatus.ALIGNED if aligned else PreferenceMatchStatus.UNKNOWN,
+        desired,
+        [job.title],
+        reason,
+    )
+
+
+def _evaluate_location(
+    preference: CareerPreference, job: JobPosting
+) -> PreferenceMatchResponse:
+    targets = list(preference.target_locations)
+    job_locations = [
+        value
+        for value in [
+            job.location_text,
+            job.city,
+            job.state,
+            f"{job.city} - {job.state}" if job.city and job.state else None,
+            f"{job.city}, {job.state}" if job.city and job.state else None,
+        ]
+        if value
+    ]
+    if not targets or not job_locations:
+        return _preference_result(
+            PreferenceAspect.LOCATION,
+            PreferenceMatchStatus.UNKNOWN,
+            targets,
+            job_locations,
+            "Faltam dados estruturados de localização em um dos lados.",
+        )
+    aligned = any(
+        _normalize(candidate) == _normalize(job_location)
+        for candidate in targets
+        for job_location in job_locations
+    )
+    reason = (
+        "Localização corresponde exatamente a uma preferência."
+        if aligned
+        else "Localizações diferentes não são tratadas como conflito no v0."
+    )
+    return _preference_result(
+        PreferenceAspect.LOCATION,
+        PreferenceMatchStatus.ALIGNED if aligned else PreferenceMatchStatus.UNKNOWN,
+        targets,
+        job_locations,
+        reason,
+    )
+
+
+def _evaluate_enum_preference(
+    aspect: PreferenceAspect,
+    candidate_values: list[str],
+    job_value: str | None,
+    aligned_reason: str,
+    conflict_reason: str,
+) -> PreferenceMatchResponse:
+    if not candidate_values or job_value is None:
+        return _preference_result(
+            aspect,
+            PreferenceMatchStatus.UNKNOWN,
+            candidate_values,
+            [job_value] if job_value else [],
+            "Faltam dados estruturados em um dos lados.",
+        )
+    aligned = job_value in candidate_values
+    return _preference_result(
+        aspect,
+        PreferenceMatchStatus.ALIGNED if aligned else PreferenceMatchStatus.CONFLICT,
+        candidate_values,
+        [job_value],
+        aligned_reason if aligned else conflict_reason,
+    )
+
+
+def _evaluate_salary(
+    preference: CareerPreference, job: JobPosting
+) -> PreferenceMatchResponse:
+    candidate_min = preference.salary_min
+    job_values = [str(value) for value in [job.salary_min, job.salary_max] if value is not None]
+    if candidate_min is None or not job_values:
+        return _preference_result(
+            PreferenceAspect.SALARY,
+            PreferenceMatchStatus.UNKNOWN,
+            [str(candidate_min)] if candidate_min is not None else [],
+            job_values,
+            "Falta remuneração mínima desejada ou faixa salarial da vaga.",
+        )
+    if preference.salary_currency != job.salary_currency:
+        return _preference_result(
+            PreferenceAspect.SALARY,
+            PreferenceMatchStatus.UNKNOWN,
+            [f"{candidate_min} {preference.salary_currency}"],
+            [f"{value} {job.salary_currency}" for value in job_values],
+            "Moedas diferentes não são convertidas no Match v0.",
+        )
+    if job.salary_period != SalaryPeriod.MONTH.value:
+        return _preference_result(
+            PreferenceAspect.SALARY,
+            PreferenceMatchStatus.UNKNOWN,
+            [f"{candidate_min} {preference.salary_currency}/MONTH"],
+            job_values,
+            (
+                "A preferência salarial do piloto é mensal; períodos diferentes "
+                "não são convertidos."
+            ),
+        )
+
+    if job.salary_max is not None and job.salary_max < candidate_min:
+        status = PreferenceMatchStatus.CONFLICT
+        reason = "O teto salarial informado está abaixo do mínimo desejado."
+    elif job.salary_min is not None and job.salary_min >= candidate_min:
+        status = PreferenceMatchStatus.ALIGNED
+        reason = "A remuneração mínima da vaga atende ao mínimo desejado."
+    elif job.salary_max is not None and job.salary_max >= candidate_min:
+        status = PreferenceMatchStatus.ALIGNED
+        reason = "A faixa salarial da vaga alcança o mínimo desejado."
+    else:
+        status = PreferenceMatchStatus.UNKNOWN
+        reason = "A faixa informada é insuficiente para concluir alinhamento salarial."
+
+    return _preference_result(
+        PreferenceAspect.SALARY,
+        status,
+        [f"mínimo {candidate_min} {preference.salary_currency}/MONTH"],
+        [f"{value} {job.salary_currency}/MONTH" for value in job_values],
+        reason,
+    )
+
+
 def _evaluate_preferences(
     preference: CareerPreference | None, job: JobPosting
 ) -> list[PreferenceMatchResponse]:
@@ -470,211 +619,32 @@ def _evaluate_preferences(
             for aspect in PreferenceAspect
         ]
 
-    results: list[PreferenceMatchResponse] = []
-
-    desired_titles = list(preference.desired_titles)
-    if desired_titles:
-        title_aligned = any(_normalize(item) == _normalize(job.title) for item in desired_titles)
-        results.append(
-            _preference_result(
-                PreferenceAspect.TITLE,
-                PreferenceMatchStatus.ALIGNED
-                if title_aligned
-                else PreferenceMatchStatus.UNKNOWN,
-                desired_titles,
-                [job.title],
-                "Título corresponde exatamente a uma preferência."
-                if title_aligned
-                else "Títulos diferentes não são tratados como conflito no v0 porque sinônimos não são inferidos.",
-            )
-        )
-    else:
-        results.append(
-            _preference_result(
-                PreferenceAspect.TITLE,
-                PreferenceMatchStatus.UNKNOWN,
-                [],
-                [job.title],
-                "Nenhum título desejado foi informado.",
-            )
-        )
-
-    target_locations = list(preference.target_locations)
-    job_locations = [
-        value
-        for value in [
-            job.location_text,
-            job.city,
-            job.state,
-            f"{job.city} - {job.state}" if job.city and job.state else None,
-            f"{job.city}, {job.state}" if job.city and job.state else None,
-        ]
-        if value
+    return [
+        _evaluate_title(preference, job),
+        _evaluate_location(preference, job),
+        _evaluate_enum_preference(
+            PreferenceAspect.WORK_MODEL,
+            list(preference.work_models),
+            job.work_model,
+            "Modalidade alinhada com as preferências.",
+            "Modalidade diferente da preferência; isto não é um blocker.",
+        ),
+        _evaluate_enum_preference(
+            PreferenceAspect.CONTRACT_TYPE,
+            list(preference.contract_types),
+            job.contract_type,
+            "Tipo de contrato alinhado com as preferências.",
+            "Tipo de contrato diferente da preferência; isto não é um blocker.",
+        ),
+        _evaluate_enum_preference(
+            PreferenceAspect.SENIORITY,
+            list(preference.seniority_levels),
+            job.seniority,
+            "Senioridade alinhada com as preferências.",
+            "Senioridade diferente da preferência; isto não é um blocker.",
+        ),
+        _evaluate_salary(preference, job),
     ]
-    if target_locations and job_locations:
-        location_aligned = any(
-            _normalize(candidate) == _normalize(job_location)
-            for candidate in target_locations
-            for job_location in job_locations
-        )
-        results.append(
-            _preference_result(
-                PreferenceAspect.LOCATION,
-                PreferenceMatchStatus.ALIGNED
-                if location_aligned
-                else PreferenceMatchStatus.UNKNOWN,
-                target_locations,
-                job_locations,
-                "Localização corresponde exatamente a uma preferência."
-                if location_aligned
-                else "Localizações diferentes não são tratadas como conflito no v0.",
-            )
-        )
-    else:
-        results.append(
-            _preference_result(
-                PreferenceAspect.LOCATION,
-                PreferenceMatchStatus.UNKNOWN,
-                target_locations,
-                job_locations,
-                "Faltam dados estruturados de localização em um dos lados.",
-            )
-        )
-
-    work_models = list(preference.work_models)
-    if work_models and job.work_model:
-        aligned = job.work_model in work_models
-        results.append(
-            _preference_result(
-                PreferenceAspect.WORK_MODEL,
-                PreferenceMatchStatus.ALIGNED if aligned else PreferenceMatchStatus.CONFLICT,
-                work_models,
-                [job.work_model],
-                "Modalidade alinhada com as preferências."
-                if aligned
-                else "Modalidade diferente da preferência; isto não é um blocker.",
-            )
-        )
-    else:
-        results.append(
-            _preference_result(
-                PreferenceAspect.WORK_MODEL,
-                PreferenceMatchStatus.UNKNOWN,
-                work_models,
-                [job.work_model] if job.work_model else [],
-                "Faltam dados de modalidade em um dos lados.",
-            )
-        )
-
-    contract_types = list(preference.contract_types)
-    if contract_types and job.contract_type:
-        aligned = job.contract_type in contract_types
-        results.append(
-            _preference_result(
-                PreferenceAspect.CONTRACT_TYPE,
-                PreferenceMatchStatus.ALIGNED if aligned else PreferenceMatchStatus.CONFLICT,
-                contract_types,
-                [job.contract_type],
-                "Tipo de contrato alinhado com as preferências."
-                if aligned
-                else "Tipo de contrato diferente da preferência; isto não é um blocker.",
-            )
-        )
-    else:
-        results.append(
-            _preference_result(
-                PreferenceAspect.CONTRACT_TYPE,
-                PreferenceMatchStatus.UNKNOWN,
-                contract_types,
-                [job.contract_type] if job.contract_type else [],
-                "Faltam dados de contrato em um dos lados.",
-            )
-        )
-
-    seniorities = list(preference.seniority_levels)
-    if seniorities and job.seniority:
-        aligned = job.seniority in seniorities
-        results.append(
-            _preference_result(
-                PreferenceAspect.SENIORITY,
-                PreferenceMatchStatus.ALIGNED if aligned else PreferenceMatchStatus.CONFLICT,
-                seniorities,
-                [job.seniority],
-                "Senioridade alinhada com as preferências."
-                if aligned
-                else "Senioridade diferente da preferência; isto não é um blocker.",
-            )
-        )
-    else:
-        results.append(
-            _preference_result(
-                PreferenceAspect.SENIORITY,
-                PreferenceMatchStatus.UNKNOWN,
-                seniorities,
-                [job.seniority] if job.seniority else [],
-                "Faltam dados de senioridade em um dos lados.",
-            )
-        )
-
-    candidate_salary_min = preference.salary_min
-    job_salary_values = [
-        str(value) for value in [job.salary_min, job.salary_max] if value is not None
-    ]
-    if candidate_salary_min is None or (job.salary_min is None and job.salary_max is None):
-        results.append(
-            _preference_result(
-                PreferenceAspect.SALARY,
-                PreferenceMatchStatus.UNKNOWN,
-                [str(candidate_salary_min)] if candidate_salary_min is not None else [],
-                job_salary_values,
-                "Falta remuneração mínima desejada ou faixa salarial da vaga.",
-            )
-        )
-    elif preference.salary_currency != job.salary_currency:
-        results.append(
-            _preference_result(
-                PreferenceAspect.SALARY,
-                PreferenceMatchStatus.UNKNOWN,
-                [f"{candidate_salary_min} {preference.salary_currency}"],
-                [f"{value} {job.salary_currency}" for value in job_salary_values],
-                "Moedas diferentes não são convertidas no Match v0.",
-            )
-        )
-    elif job.salary_period != SalaryPeriod.MONTH.value:
-        results.append(
-            _preference_result(
-                PreferenceAspect.SALARY,
-                PreferenceMatchStatus.UNKNOWN,
-                [f"{candidate_salary_min} {preference.salary_currency}/MONTH"],
-                job_salary_values,
-                "A preferência salarial do piloto é mensal; períodos diferentes não são convertidos.",
-            )
-        )
-    else:
-        salary_floor = Decimal(candidate_salary_min)
-        if job.salary_max is not None and job.salary_max < salary_floor:
-            salary_status = PreferenceMatchStatus.CONFLICT
-            salary_reason = "O teto salarial informado da vaga está abaixo do mínimo desejado."
-        elif job.salary_min is not None and job.salary_min >= salary_floor:
-            salary_status = PreferenceMatchStatus.ALIGNED
-            salary_reason = "A remuneração mínima da vaga atende ao mínimo desejado."
-        elif job.salary_max is not None and job.salary_max >= salary_floor:
-            salary_status = PreferenceMatchStatus.ALIGNED
-            salary_reason = "A faixa salarial da vaga alcança o mínimo desejado."
-        else:
-            salary_status = PreferenceMatchStatus.UNKNOWN
-            salary_reason = "A faixa informada é insuficiente para concluir alinhamento salarial."
-        results.append(
-            _preference_result(
-                PreferenceAspect.SALARY,
-                salary_status,
-                [f"mínimo {candidate_salary_min} {preference.salary_currency}/MONTH"],
-                [f"{value} {job.salary_currency}/MONTH" for value in job_salary_values],
-                salary_reason,
-            )
-        )
-
-    return results
 
 
 def _score_requirements(
@@ -693,7 +663,6 @@ def _score_requirements(
     matched_weight = sum(
         item.weight for item in results if item.status == RequirementMatchStatus.MATCHED
     )
-
     coverage = int(round((evaluated_weight / total_weight) * 100)) if total_weight else 0
     score = int(round((matched_weight / evaluated_weight) * 100)) if evaluated_weight else None
     return score, coverage
@@ -735,7 +704,6 @@ async def calculate_job_match(session: AsyncSession, job_id: uuid.UUID) -> JobMa
         _evaluate_requirement(requirement, index) for requirement in job.requirements
     ]
     preference_results = _evaluate_preferences(profile.preference, job)
-
     requirement_score, coverage = _score_requirements(requirement_results)
     preference_score = _score_preferences(preference_results)
 
