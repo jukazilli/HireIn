@@ -60,7 +60,11 @@ class EducationInput(ProvenanceInput):
 
     @model_validator(mode="after")
     def validate_dates(self) -> Self:
-        if self.start_date is not None and self.end_date is not None and self.end_date < self.start_date:
+        if (
+            self.start_date is not None
+            and self.end_date is not None
+            and self.end_date < self.start_date
+        ):
             raise ValueError("end_date cannot be before start_date")
         return self
 
@@ -81,7 +85,11 @@ class CertificationInput(ProvenanceInput):
 
     @model_validator(mode="after")
     def validate_dates(self) -> Self:
-        if self.issued_date is not None and self.expires_date is not None and self.expires_date < self.issued_date:
+        if (
+            self.issued_date is not None
+            and self.expires_date is not None
+            and self.expires_date < self.issued_date
+        ):
             raise ValueError("expires_date cannot be before issued_date")
         return self
 
@@ -108,7 +116,11 @@ class CareerPreferenceInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_salary(self) -> Self:
-        if self.salary_min is not None and self.salary_max is not None and self.salary_max < self.salary_min:
+        if (
+            self.salary_min is not None
+            and self.salary_max is not None
+            and self.salary_max < self.salary_min
+        ):
             raise ValueError("salary_max cannot be lower than salary_min")
         return self
 

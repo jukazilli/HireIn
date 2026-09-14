@@ -16,7 +16,11 @@ from hirein_api.profile.models import (
     CandidateSkill,
     CareerPreference,
 )
-from hirein_api.profile.repository import clear_profile_children, get_primary_profile, get_profile_facts
+from hirein_api.profile.repository import (
+    clear_profile_children,
+    get_primary_profile,
+    get_profile_facts,
+)
 from hirein_api.profile.schemas import (
     CandidateFactResponse,
     CandidateProfileResponse,
@@ -50,7 +54,9 @@ async def get_profile(session: AsyncSession) -> CandidateProfileResponse | None:
     return await _to_response(session, profile)
 
 
-async def replace_profile(session: AsyncSession, payload: CandidateProfileUpsert) -> CandidateProfileResponse:
+async def replace_profile(
+    session: AsyncSession, payload: CandidateProfileUpsert
+) -> CandidateProfileResponse:
     profile = await get_primary_profile(session)
     now = datetime.now(UTC)
 
@@ -81,14 +87,24 @@ async def replace_profile(session: AsyncSession, payload: CandidateProfileUpsert
     session.add(
         CareerPreference(
             profile_id=profile.id,
-            desired_titles=[item.strip() for item in payload.preferences.desired_titles if item.strip()],
-            desired_areas=[item.strip() for item in payload.preferences.desired_areas if item.strip()],
+            desired_titles=[
+                item.strip() for item in payload.preferences.desired_titles if item.strip()
+            ],
+            desired_areas=[
+                item.strip() for item in payload.preferences.desired_areas if item.strip()
+            ],
             seniority_levels=[item.value for item in payload.preferences.seniority_levels],
             work_models=[item.value for item in payload.preferences.work_models],
             contract_types=[item.value for item in payload.preferences.contract_types],
-            target_locations=[item.strip() for item in payload.preferences.target_locations if item.strip()],
-            salary_min=Decimal(str(payload.preferences.salary_min)) if payload.preferences.salary_min is not None else None,
-            salary_max=Decimal(str(payload.preferences.salary_max)) if payload.preferences.salary_max is not None else None,
+            target_locations=[
+                item.strip() for item in payload.preferences.target_locations if item.strip()
+            ],
+            salary_min=Decimal(str(payload.preferences.salary_min))
+            if payload.preferences.salary_min is not None
+            else None,
+            salary_max=Decimal(str(payload.preferences.salary_max))
+            if payload.preferences.salary_max is not None
+            else None,
             salary_currency=payload.preferences.salary_currency.upper(),
             willing_to_relocate=payload.preferences.willing_to_relocate,
             willing_to_travel=payload.preferences.willing_to_travel,
@@ -156,7 +172,9 @@ async def replace_profile(session: AsyncSession, payload: CandidateProfileUpsert
                 normalized_name=_normalized_name(item.name),
                 category=item.category,
                 level=item.level.value if item.level is not None else None,
-                years_experience=Decimal(str(item.years_experience)) if item.years_experience is not None else None,
+                years_experience=Decimal(str(item.years_experience))
+                if item.years_experience is not None
+                else None,
                 source_type=source_type,
                 source_ref=item.source_ref,
                 confidence=confidence,
@@ -220,7 +238,9 @@ async def replace_profile(session: AsyncSession, payload: CandidateProfileUpsert
     return await _to_response(session, stored)
 
 
-async def _to_response(session: AsyncSession, profile: CandidateProfile) -> CandidateProfileResponse:
+async def _to_response(
+    session: AsyncSession, profile: CandidateProfile
+) -> CandidateProfileResponse:
     preference = profile.preference
     if preference is None:
         raise RuntimeError("candidate profile is missing career preferences")
@@ -272,7 +292,9 @@ async def _to_response(session: AsyncSession, profile: CandidateProfile) -> Cand
         ],
         education=[EducationResponse.model_validate(item) for item in profile.education],
         skills=[SkillResponse.model_validate(item) for item in profile.skills],
-        certifications=[CertificationResponse.model_validate(item) for item in profile.certifications],
+        certifications=[
+            CertificationResponse.model_validate(item) for item in profile.certifications
+        ],
         languages=[LanguageResponse.model_validate(item) for item in profile.languages],
         facts=[
             CandidateFactResponse(

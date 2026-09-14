@@ -3,6 +3,7 @@
 Revision ID: 0001_bootstrap
 Revises:
 """
+
 from collections.abc import Sequence
 
 from alembic import op

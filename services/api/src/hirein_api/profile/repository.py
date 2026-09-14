@@ -35,7 +35,9 @@ async def get_primary_profile(session: AsyncSession) -> CandidateProfile | None:
     return (await session.scalars(statement)).one_or_none()
 
 
-async def get_profile_facts(session: AsyncSession, profile_id: uuid.UUID) -> Sequence[CandidateFact]:
+async def get_profile_facts(
+    session: AsyncSession, profile_id: uuid.UUID
+) -> Sequence[CandidateFact]:
     statement = (
         select(CandidateFact)
         .where(CandidateFact.profile_id == profile_id, CandidateFact.experience_id.is_(None))
@@ -46,9 +48,17 @@ async def get_profile_facts(session: AsyncSession, profile_id: uuid.UUID) -> Seq
 
 async def clear_profile_children(session: AsyncSession, profile_id: uuid.UUID) -> None:
     await session.execute(delete(CandidateFact).where(CandidateFact.profile_id == profile_id))
-    await session.execute(delete(CandidateExperience).where(CandidateExperience.profile_id == profile_id))
-    await session.execute(delete(CandidateEducation).where(CandidateEducation.profile_id == profile_id))
+    await session.execute(
+        delete(CandidateExperience).where(CandidateExperience.profile_id == profile_id)
+    )
+    await session.execute(
+        delete(CandidateEducation).where(CandidateEducation.profile_id == profile_id)
+    )
     await session.execute(delete(CandidateSkill).where(CandidateSkill.profile_id == profile_id))
-    await session.execute(delete(CandidateCertification).where(CandidateCertification.profile_id == profile_id))
-    await session.execute(delete(CandidateLanguage).where(CandidateLanguage.profile_id == profile_id))
+    await session.execute(
+        delete(CandidateCertification).where(CandidateCertification.profile_id == profile_id)
+    )
+    await session.execute(
+        delete(CandidateLanguage).where(CandidateLanguage.profile_id == profile_id)
+    )
     await session.execute(delete(CareerPreference).where(CareerPreference.profile_id == profile_id))
