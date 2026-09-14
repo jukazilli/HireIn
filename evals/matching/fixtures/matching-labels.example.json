@@ -1,0 +1,14 @@
+[
+  {
+    "job_file": "job-strong.example.json",
+    "relevance": 4,
+    "blocker_real": false,
+    "reason": "Fixture sintética de uma vaga intencionalmente aderente."
+  },
+  {
+    "job_file": "job-weak.example.json",
+    "relevance": 1,
+    "blocker_real": true,
+    "reason": "Fixture sintética de uma vaga intencionalmente pouco aderente."
+  }
+]
