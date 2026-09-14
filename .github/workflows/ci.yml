@@ -35,12 +35,7 @@ jobs:
           python-version: "3.13"
           enable-cache: true
       - name: Sync Python workspace
-        run: uv sync --all-packages --dev
-      - name: Publish uv lockfile
-        uses: actions/upload-artifact@v7
-        with:
-          name: bootstrap-uv-lock
-          path: uv.lock
+        run: uv sync --locked --all-packages --dev
       - name: Ruff
         run: uv run --package hirein-api ruff check services/api
       - name: Mypy
@@ -63,12 +58,7 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
-      - name: Publish pnpm lockfile
-        uses: actions/upload-artifact@v7
-        with:
-          name: bootstrap-pnpm-lock
-          path: pnpm-lock.yaml
+        run: pnpm install --frozen-lockfile
       - name: Svelte checks
         run: pnpm check:web
       - name: Build web
@@ -91,9 +81,9 @@ jobs:
         with:
           node-version: 22
       - name: Sync Python workspace
-        run: uv sync --all-packages --dev
+        run: uv sync --locked --all-packages --dev
       - name: Install TypeScript dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
       - name: Export OpenAPI
         run: uv run --package hirein-api python scripts/export_openapi.py
       - name: Generate TypeScript contract
