@@ -1,74 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-
-  const API = 'http://localhost:8000/api/v1';
-
-  type Evaluation = {
-    job_id: string;
-    relevance: number;
-    blocker_real: boolean;
-    reason: string | null;
-    error_category: string | null;
-  };
-
-  type ReviewJob = {
-    job_id: string;
-    company_name: string;
-    title: string;
-    location_text: string | null;
-    work_model: string | null;
-    contract_type: string | null;
-    seniority: string | null;
-    requirement_count: number;
-    evaluation: Evaluation | null;
-  };
-
-  type Metrics = {
-    sample_count: number;
-    relevant_count: number;
-    scored_count: number;
-    average_coverage: number;
-    recall_at_5: number;
-    recall_at_10: number;
-    ndcg_at_5: number;
-    ndcg_at_10: number;
-  };
-
-  type RankingItem = {
-    job_id: string;
-    company_name: string;
-    title: string;
-    relevance: number;
-    score: number | null;
-    coverage: number;
-    band: string;
-    blocker_real: boolean;
-    reason: string | null;
-    error_category: string | null;
-  };
-
-  type Report = {
-    metrics: Metrics;
-    ranking: RankingItem[];
-  };
+  import { api, type PilotEvalReport, type PilotReviewJob } from '$lib/api';
 
   let profileReady = false;
-  let jobs: ReviewJob[] = [];
-  let report: Report | null = null;
+  let jobs: PilotReviewJob[] = [];
+  let report: PilotEvalReport | null = null;
   let loading = true;
   let error = '';
 
   const errorLabels: Record<string, string> = {
     MISSING_PROFILE_EVIDENCE: 'Falta de evidência no perfil',
-    BAD_JOB_NORMALIZATION: 'Normalização da vaga',
-    SIMPLE_ALIAS: 'Alias simples',
-    SEMANTIC_EQUIVALENCE: 'Equivalência semântica',
-    PREFERENCE_RULE: 'Regra de preferência',
-    SALARY_RULE: 'Regra salarial',
-    SENIORITY_RULE: 'Regra de senioridade',
-    COVERAGE_FAILURE: 'Cobertura insuficiente',
-    RANKING_WEIGHT: 'Peso / ranking',
-    OTHER: 'Outro'
+    BAD_JOB_NORMALIZATION: 'Normalização da vaga', SIMPLE_ALIAS: 'Alias simples',
+    SEMANTIC_EQUIVALENCE: 'Equivalência semântica', PREFERENCE_RULE: 'Regra de preferência',
+    SALARY_RULE: 'Regra salarial', SENIORITY_RULE: 'Regra de senioridade',
+    COVERAGE_FAILURE: 'Cobertura insuficiente', RANKING_WEIGHT: 'Peso / ranking', OTHER: 'Outro'
   };
 
   $: reviewedCount = jobs.filter((job) => job.evaluation !== null).length;
@@ -84,7 +29,7 @@
   $: topErrors = errorDistribution.slice(0, 5);
   $: nextStep = deriveNextStep();
 
-  function buildErrorDistribution(items: ReviewJob[]) {
+  function buildErrorDistribution(items: PilotReviewJob[]) {
     const counts = new Map<string, number>();
     for (const item of items) {
       const category = item.evaluation?.error_category;
@@ -97,86 +42,48 @@
   }
 
   function deriveNextStep() {
-    if (!profileReady) {
-      return {
-        title: 'Complete seu perfil profissional',
-        description: 'O Match precisa de uma fonte de verdade antes de comparar você com uma vaga.',
-        href: '/',
-        action: 'Completar perfil'
-      };
-    }
-    if (jobs.length < 5) {
-      return {
-        title: 'Cadastre as primeiras 5 vagas reais',
-        description: `Há ${jobs.length}/5 vagas no smoke test. Priorize oportunidades que você realmente consideraria.`,
-        href: '/jobs',
-        action: 'Adicionar vagas'
-      };
-    }
-    if (reviewedCount < 5) {
-      return {
-        title: 'Conclua o smoke test de revisão',
-        description: `${reviewedCount}/5 vagas já receberam sua avaliação humana.`,
-        href: '/jobs/review',
-        action: 'Revisar vagas'
-      };
-    }
-    if (reviewedCount < 30) {
-      return {
-        title: 'Expanda a baseline para 30 vagas',
-        description: `Smoke test concluído. Faltam ${30 - reviewedCount} avaliações para o primeiro dataset útil.`,
-        href: '/jobs/review',
-        action: 'Continuar piloto'
-      };
-    }
-    if (reviewedCount < 50) {
-      return {
-        title: 'Aumente a confiança da baseline',
-        description: `A meta mínima foi atingida. Mais ${50 - reviewedCount} avaliações levam o piloto ao alvo estendido.`,
-        href: '/jobs/review',
-        action: 'Continuar até 50'
-      };
-    }
+    if (!profileReady) return {
+      title: 'Complete seu perfil profissional',
+      description: 'O Match precisa de uma fonte de verdade antes de comparar você com uma vaga.',
+      href: '/', action: 'Completar perfil'
+    };
+    if (jobs.length < 5) return {
+      title: 'Cadastre as primeiras 5 vagas reais',
+      description: `Há ${jobs.length}/5 vagas no smoke test. Priorize oportunidades que você realmente consideraria.`,
+      href: '/jobs', action: 'Adicionar vagas'
+    };
+    if (reviewedCount < 5) return {
+      title: 'Conclua o smoke test de revisão',
+      description: `${reviewedCount}/5 vagas já receberam sua avaliação humana.`,
+      href: '/jobs/review', action: 'Revisar vagas'
+    };
+    if (reviewedCount < 30) return {
+      title: 'Expanda a baseline para 30 vagas',
+      description: `Smoke test concluído. Faltam ${30 - reviewedCount} avaliações para o primeiro dataset útil.`,
+      href: '/jobs/review', action: 'Continuar piloto'
+    };
+    if (reviewedCount < 50) return {
+      title: 'Aumente a confiança da baseline',
+      description: `A meta mínima foi atingida. Mais ${50 - reviewedCount} avaliações levam o piloto ao alvo estendido.`,
+      href: '/jobs/review', action: 'Continuar até 50'
+    };
     return {
       title: 'Dataset pronto para decisão técnica',
       description: 'Já existe evidência suficiente para decidir se o próximo ganho vem de regras, aliases, embeddings ou LLM.',
-      href: '/jobs/review',
-      action: 'Revisar diagnóstico'
+      href: '/jobs/review', action: 'Revisar diagnóstico'
     };
   }
 
-  function metricPercent(value: number) {
-    return `${Math.round(value * 100)}%`;
-  }
+  function metricPercent(value: number) { return `${Math.round(value * 100)}%`; }
 
   async function load() {
-    loading = true;
-    error = '';
+    loading = true; error = '';
     try {
-      const [profileResponse, jobsResponse] = await Promise.all([
-        fetch(`${API}/profile`),
-        fetch(`${API}/evals/jobs`)
-      ]);
-
-      profileReady = profileResponse.ok;
-
-      if (!jobsResponse.ok) {
-        const body = await jobsResponse.json().catch(() => null);
-        throw new Error(body?.detail ?? `Falha ao carregar vagas (${jobsResponse.status}).`);
-      }
-      jobs = await jobsResponse.json();
-
-      if (profileReady && reviewedCount > 0) {
-        const reportResponse = await fetch(`${API}/evals/report`);
-        if (reportResponse.ok) {
-          report = await reportResponse.json();
-        } else {
-          const body = await reportResponse.json().catch(() => null);
-          throw new Error(body?.detail ?? `Falha ao gerar relatório (${reportResponse.status}).`);
-        }
-      } else {
-        report = null;
-      }
+      const [profile, reviewJobs] = await Promise.all([api.getProfile(), api.listReviewJobs()]);
+      profileReady = profile !== null;
+      jobs = reviewJobs;
+      const reviewed = jobs.filter((job) => job.evaluation !== null).length;
+      report = profileReady && reviewed > 0 ? await api.getEvalReport() : null;
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível carregar o piloto.';
     } finally {

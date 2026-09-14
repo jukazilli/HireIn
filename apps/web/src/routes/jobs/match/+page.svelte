@@ -1,93 +1,28 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-
-  const API = 'http://localhost:8000/api/v1/jobs';
-
-  type JobSummary = {
-    id: string;
-    company_name: string;
-    title: string;
-    location_text: string | null;
-    work_model: string | null;
-    contract_type: string | null;
-    seniority: string | null;
-    requirement_count: number;
-  };
-
-  type Evidence = {
-    entity_type: string;
-    entity_id: string;
-    value: string;
-    source_type: string;
-    detail: string | null;
-  };
-
-  type RequirementResult = {
-    requirement_id: string;
-    kind: string;
-    importance: string;
-    value: string;
-    status: 'MATCHED' | 'GAP' | 'UNKNOWN' | 'INFO';
-    weight: number;
-    evidence: Evidence[];
-    reason: string;
-  };
-
-  type PreferenceResult = {
-    aspect: string;
-    status: 'ALIGNED' | 'CONFLICT' | 'UNKNOWN';
-    candidate_value: string[];
-    job_value: string[];
-    reason: string;
-  };
-
-  type MatchResult = {
-    job_id: string;
-    profile_id: string;
-    score: number | null;
-    band: string;
-    requirement_score: number | null;
-    preference_score: number | null;
-    evaluation_coverage: number;
-    matched_required: number;
-    missing_required: number;
-    matched_preferred: number;
-    missing_preferred: number;
-    unknown_requirements: number;
-    requirement_results: RequirementResult[];
-    preference_results: PreferenceResult[];
-    warnings: string[];
-  };
+  import { api, type JobMatch, type JobSummary } from '$lib/api';
 
   let jobs: JobSummary[] = [];
   let selectedJob: JobSummary | null = null;
-  let result: MatchResult | null = null;
+  let result: JobMatch | null = null;
   let loading = true;
   let calculating = false;
   let error = '';
 
   const bandLabel: Record<string, string> = {
-    STRONG: 'Compatibilidade forte',
-    GOOD: 'Boa compatibilidade',
-    PARTIAL: 'Compatibilidade parcial',
-    LOW: 'Compatibilidade baixa',
+    STRONG: 'Compatibilidade forte', GOOD: 'Boa compatibilidade',
+    PARTIAL: 'Compatibilidade parcial', LOW: 'Compatibilidade baixa',
     INSUFFICIENT_DATA: 'Dados insuficientes'
   };
 
   const statusLabel: Record<string, string> = {
-    MATCHED: 'Atendido',
-    GAP: 'Gap',
-    UNKNOWN: 'Não avaliável',
-    INFO: 'Informativo',
-    ALIGNED: 'Alinhado',
-    CONFLICT: 'Conflito'
+    MATCHED: 'Atendido', GAP: 'Gap', UNKNOWN: 'Não avaliável', INFO: 'Informativo',
+    ALIGNED: 'Alinhado', CONFLICT: 'Conflito'
   };
 
   async function loadJobs() {
     try {
-      const response = await fetch(API);
-      if (!response.ok) throw new Error(`Falha ao carregar vagas (${response.status}).`);
-      jobs = await response.json();
+      jobs = await api.listJobs();
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível carregar as vagas.';
     } finally {
@@ -96,17 +31,9 @@
   }
 
   async function calculate(job: JobSummary) {
-    selectedJob = job;
-    result = null;
-    error = '';
-    calculating = true;
+    selectedJob = job; result = null; error = ''; calculating = true;
     try {
-      const response = await fetch(`${API}/${job.id}/match`);
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail ?? `Falha ao calcular (${response.status}).`);
-      }
-      result = await response.json();
+      result = await api.getJobMatch(job.id);
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível calcular o Match.';
     } finally {

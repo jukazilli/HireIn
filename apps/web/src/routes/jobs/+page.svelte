@@ -1,55 +1,37 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-
-  const API = 'http://localhost:8000/api/v1/jobs';
+  import {
+    api,
+    type ContractType,
+    type JobPostingUpsert,
+    type JobSourceKind,
+    type JobSummary,
+    type RequirementImportance,
+    type RequirementKind,
+    type SalaryPeriod,
+    type Seniority,
+    type WorkModel
+  } from '$lib/api';
 
   type Requirement = {
-    kind: string;
-    importance: string;
+    kind: RequirementKind;
+    importance: RequirementImportance;
     value: string;
     min_years: string;
     source_text: string;
   };
 
-  type JobSummary = {
-    id: string;
-    company_name: string;
-    title: string;
-    location_text: string | null;
-    work_model: string | null;
-    contract_type: string | null;
-    status: string;
-    source_platform: string | null;
-    requirement_count: number;
-  };
-
   const newRequirement = (): Requirement => ({
-    kind: 'SKILL',
-    importance: 'REQUIRED',
-    value: '',
-    min_years: '',
-    source_text: ''
+    kind: 'SKILL', importance: 'REQUIRED', value: '', min_years: '', source_text: ''
   });
 
   let form = {
-    source_kind: 'MANUAL',
-    source_platform: '',
-    external_id: '',
-    source_url: '',
-    apply_url: '',
-    company_name: '',
-    title: '',
-    location_text: '',
-    city: '',
-    state: '',
-    work_model: '',
-    contract_type: '',
-    seniority: '',
-    salary_min: '',
-    salary_max: '',
-    salary_period: 'MONTH',
-    description_raw: '',
-    requirements: [] as Requirement[]
+    source_kind: 'MANUAL' as JobSourceKind,
+    source_platform: '', external_id: '', source_url: '', apply_url: '',
+    company_name: '', title: '', location_text: '', city: '', state: '',
+    work_model: '' as WorkModel | '', contract_type: '' as ContractType | '',
+    seniority: '' as Seniority | '', salary_min: '', salary_max: '',
+    salary_period: 'MONTH' as SalaryPeriod, description_raw: '', requirements: [] as Requirement[]
   };
 
   let jobs: JobSummary[] = [];
@@ -61,19 +43,14 @@
   const optional = (value: string) => value.trim() || null;
   const numberOrNull = (value: string) => (value.trim() ? Number(value) : null);
 
-  function addRequirement() {
-    form.requirements = [...form.requirements, newRequirement()];
-  }
-
+  function addRequirement() { form.requirements = [...form.requirements, newRequirement()]; }
   function removeRequirement(index: number) {
     form.requirements = form.requirements.filter((_, itemIndex) => itemIndex !== index);
   }
 
   async function loadJobs() {
     try {
-      const response = await fetch(API);
-      if (!response.ok) throw new Error(`Falha ao carregar vagas (${response.status}).`);
-      jobs = await response.json();
+      jobs = await api.listJobs();
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível carregar as vagas.';
     } finally {
@@ -81,54 +58,31 @@
     }
   }
 
-  function payload() {
+  function payload(): JobPostingUpsert {
     return {
       source_kind: form.source_kind,
-      source_platform: optional(form.source_platform),
-      external_id: optional(form.external_id),
-      source_url: optional(form.source_url),
-      apply_url: optional(form.apply_url),
-      company_name: form.company_name.trim(),
-      title: form.title.trim(),
-      location_text: optional(form.location_text),
-      city: optional(form.city),
-      state: optional(form.state),
-      country_code: 'BR',
-      work_model: optional(form.work_model),
-      contract_type: optional(form.contract_type),
-      seniority: optional(form.seniority),
-      description_raw: form.description_raw.trim(),
-      salary_min: numberOrNull(form.salary_min),
-      salary_max: numberOrNull(form.salary_max),
-      salary_currency: 'BRL',
-      salary_period: optional(form.salary_period),
-      status: 'ACTIVE',
+      source_platform: optional(form.source_platform), external_id: optional(form.external_id),
+      source_url: optional(form.source_url), apply_url: optional(form.apply_url),
+      company_name: form.company_name.trim(), title: form.title.trim(),
+      location_text: optional(form.location_text), city: optional(form.city), state: optional(form.state),
+      country_code: 'BR', work_model: form.work_model || null, contract_type: form.contract_type || null,
+      seniority: form.seniority || null, description_raw: form.description_raw.trim(),
+      salary_min: numberOrNull(form.salary_min), salary_max: numberOrNull(form.salary_max),
+      salary_currency: 'BRL', salary_period: form.salary_period, status: 'ACTIVE',
       requirements: form.requirements
         .filter((requirement) => requirement.value.trim())
         .map((requirement) => ({
-          kind: requirement.kind,
-          importance: requirement.importance,
-          value: requirement.value.trim(),
-          min_years: numberOrNull(requirement.min_years),
+          kind: requirement.kind, importance: requirement.importance,
+          value: requirement.value.trim(), min_years: numberOrNull(requirement.min_years),
           source_text: optional(requirement.source_text)
         }))
     };
   }
 
   async function save() {
-    message = '';
-    error = '';
-    saving = true;
+    message = ''; error = ''; saving = true;
     try {
-      const response = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload())
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail ?? `Falha ao salvar (${response.status}).`);
-      }
+      await api.createJob(payload());
       message = 'Vaga salva. Ela já pode ser analisada no Match.';
       await loadJobs();
     } catch (reason) {
