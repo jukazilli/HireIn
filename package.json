@@ -9,6 +9,10 @@
     "dev:web": "pnpm --filter @hirein/web dev",
     "build:web": "pnpm --filter @hirein/web build",
     "check:web": "pnpm --filter @hirein/web check",
-    "generate:api-types": "pnpm --filter @hirein/generated-client generate"
+    "generate:api-types": "pnpm --filter @hirein/generated-client generate",
+    "pilot": "uv run python scripts/pilot_runtime.py run",
+    "pilot:setup": "uv run python scripts/pilot_runtime.py setup",
+    "pilot:doctor": "uv run python scripts/pilot_runtime.py doctor",
+    "pilot:backup": "uv run python scripts/pilot_runtime.py backup"
   }
 }

@@ -36,6 +36,10 @@ jobs:
           enable-cache: true
       - name: Sync Python workspace
         run: uv sync --locked --all-packages --dev
+      - name: Pilot runtime syntax
+        run: |
+          uv run python -m py_compile scripts/pilot_runtime.py
+          uv run python scripts/pilot_runtime.py --help
       - name: Ruff
         run: uv run --package hirein-api ruff check services/api
       - name: Mypy

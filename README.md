@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** baseline de avaliação do Match implementada com workspace visual; próximo gate de produto é acumular aproximadamente 30–50 vagas brasileiras reais avaliadas pelo piloto.
+> **Fase atual:** runtime local real disponível; próximo gate é executar o smoke do piloto com 5 vagas brasileiras reais antes de ampliar o dataset e avançar para Application Draft.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -50,7 +50,8 @@ Uma tela que compila, mas poderia pertencer a qualquer SaaS, não está pronta.
 14. [Pilot Evaluation Dataset](docs/14-PILOT-EVALS.md)
 15. [Operação do piloto](docs/15-PILOT-OPERATIONS.md)
 16. [Visual Direction & Product UI Contract](docs/16-VISUAL-DIRECTION.md)
-17. [Architecture Decision Records](docs/adr/README.md)
+17. [Runtime real do piloto local](docs/17-LOCAL-PILOT-RUNTIME.md)
+18. [Architecture Decision Records](docs/adr/README.md)
 
 O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
@@ -62,7 +63,8 @@ O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agente
 | Extensão futura | WXT + Svelte + Manifest V3 |
 | Core API | Python + FastAPI |
 | Banco | PostgreSQL + pgvector |
-| Banco hospedado no piloto | Neon Free |
+| Banco do P0 real | PostgreSQL local via Docker Compose |
+| Banco hospedado opcional | Neon Free |
 | ORM / migrations | SQLAlchemy 2 + Alembic |
 | Browser automation | Playwright Python |
 | Queue do piloto | PostgreSQL |
@@ -84,7 +86,38 @@ A Etapa A possui uma baseline executável com:
 - health checks de liveness e readiness;
 - OpenAPI como fonte do contrato para TypeScript;
 - `uv.lock` e `pnpm-lock.yaml` versionados;
-- CI com instalações bloqueadas e checks de frontend, backend, migrations e contrato.
+- CI com instalações bloqueadas e checks de frontend, backend, migrations e contrato;
+- E2E em Chromium cobrindo Svelte → FastAPI → PostgreSQL → Match → revisão humana → relatório.
+
+## Executar o piloto real
+
+A Vercel continua sendo preview visual com dados sintéticos. Dados pessoais e avaliações reais devem ficar no runtime local.
+
+Pré-requisitos: Node 22, pnpm 12, `uv` e Docker.
+
+```bash
+pnpm pilot:doctor
+pnpm pilot:setup
+pnpm pilot
+```
+
+O comando `pnpm pilot` sobe o stack real e abre:
+
+```text
+http://127.0.0.1:5173/pilot
+```
+
+Em `localhost` a API sintética de preview fica desligada. O frontend usa FastAPI e PostgreSQL reais.
+
+Backup do banco local:
+
+```bash
+pnpm pilot:backup
+```
+
+Os dumps ficam em `.local-data/backups/`, fora do Git.
+
+O procedimento completo está em `docs/17-LOCAL-PILOT-RUNTIME.md`.
 
 ## Candidate Core
 
@@ -244,7 +277,16 @@ O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-O próximo trabalho é operacional, não uma nova camada de IA: acumular aproximadamente **30–50 vagas brasileiras reais**, registrar sua relevância humana e revisar os erros da baseline.
+O próximo trabalho é operacional, não uma nova camada de IA:
+
+```text
+runtime real
+→ preencher Candidate Profile real
+→ avaliar 5 vagas brasileiras reais
+→ corrigir qualquer falha crítica de modelagem
+→ implementar/validar Application Draft
+→ ampliar gradualmente o dataset para 30–50 vagas
+```
 
 O dataset deve revelar se os principais problemas são:
 
@@ -257,6 +299,8 @@ O dataset deve revelar se os principais problemas são:
 - pesos de ranking.
 
 Só depois disso será decidido se o ganho seguinte vem de regras melhores, aliases/taxonomia, embeddings, reranking ou LLM.
+
+Adapter de candidatura, extensão e automação de navegador não entram antes de o fluxo de preparação/Application Draft estar validado.
 
 A ordem detalhada e os critérios de aceite permanecem em `docs/09-IMPLEMENTATION-PLAN.md`.
 
