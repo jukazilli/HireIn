@@ -76,12 +76,21 @@
     (completionSignals.filter(Boolean).length / completionSignals.length) * 100
   );
 
-  const list = (value: string) => value.split(/[
-,]/).map((item) => item.trim()).filter(Boolean);
+  const list = (value: string) => value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
   const optional = (value: string) => value.trim() || null;
   const toggle = <T extends string>(items: T[], value: T) =>
     items.includes(value) ? items.filter((item) => item !== value) : [...items, value];
   const provenance = () => ({ source_type: 'USER_CONFIRMED' as const, confidence: 1 });
+  const workModelOptions: { value: WorkModel; label: string }[] = [
+    { value: 'REMOTE', label: 'Remoto' },
+    { value: 'HYBRID', label: 'Híbrido' },
+    { value: 'ONSITE', label: 'Presencial' }
+  ];
+  const contractOptions: { value: ContractType; label: string }[] = [
+    { value: 'CLT', label: 'CLT' },
+    { value: 'PJ', label: 'PJ' },
+    { value: 'INTERNSHIP', label: 'Estágio' }
+  ];
 
   function addExperience() { form.experiences = [...form.experiences, newExperience()]; }
   function addEducation() { form.education = [...form.education, newEducation()]; }
@@ -113,13 +122,11 @@
       form.willing_to_travel = data.preferences.willing_to_travel;
       form.willing_to_relocate = data.preferences.willing_to_relocate;
       form.skills = data.skills.map((item) => item.name).join(', ');
-      form.facts = data.facts.map((item) => item.value).join('
-');
+      form.facts = data.facts.map((item) => item.value).join('\n');
       form.experiences = data.experiences.map((item) => ({
         company_name: item.company_name, role_title: item.role_title,
         start_date: item.start_date, end_date: item.end_date ?? '', is_current: item.is_current,
-        description: item.description ?? '', facts: item.facts.map((fact) => fact.value).join('
-')
+        description: item.description ?? '', facts: item.facts.map((fact) => fact.value).join('\n')
       }));
       form.education = data.education.map((item) => ({
         institution: item.institution, course: item.course, status: item.status,
@@ -269,7 +276,7 @@
           <div class="preference-block">
             <span>Modelo de trabalho</span>
             <div class="choice-row">
-              {#each [{value:'REMOTE',label:'Remoto'},{value:'HYBRID',label:'Híbrido'},{value:'ONSITE',label:'Presencial'}] as option}
+              {#each workModelOptions as option}
                 <label class="choice"><input type="checkbox" checked={form.work_models.includes(option.value)} onchange={() => form.work_models = toggle(form.work_models, option.value)} />{option.label}</label>
               {/each}
             </div>
@@ -277,8 +284,8 @@
           <div class="preference-block">
             <span>Tipo de contratação</span>
             <div class="choice-row">
-              {#each ['CLT','PJ','INTERNSHIP'] as contract}
-                <label class="choice"><input type="checkbox" checked={form.contract_types.includes(contract)} onchange={() => form.contract_types = toggle(form.contract_types, contract)} />{contract === 'INTERNSHIP' ? 'Estágio' : contract}</label>
+              {#each contractOptions as option}
+                <label class="choice"><input type="checkbox" checked={form.contract_types.includes(option.value)} onchange={() => form.contract_types = toggle(form.contract_types, option.value)} />{option.label}</label>
               {/each}
             </div>
           </div>
