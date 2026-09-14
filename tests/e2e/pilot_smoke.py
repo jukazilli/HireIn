@@ -13,6 +13,7 @@ ARTIFACT_DIR = Path(os.getenv("E2E_ARTIFACT_DIR", "e2e-artifacts"))
 CANDIDATE_NAME = "Candidato Sintetico E2E"
 COMPANY_NAME = "Empresa Sintetica E2E"
 JOB_TITLE = "Analista de Projetos E2E"
+SKILLS = "Gestão de Projetos, Levantamento de Requisitos, Implantação de Sistemas"
 
 
 def fill_profile(page: Page) -> None:
@@ -29,9 +30,7 @@ def fill_profile(page: Page) -> None:
     page.get_by_label("Senioridade", exact=True).select_option("MID")
     page.get_by_label("Remoto", exact=True).check()
     page.get_by_label("CLT", exact=True).check()
-    page.get_by_label("Skills", exact=True).fill(
-        "Gestão de Projetos, Levantamento de Requisitos, Implantação de Sistemas"
-    )
+    page.get_by_label("Skills", exact=True).fill(SKILLS)
     page.get_by_label("Outros fatos confirmados", exact=True).fill(
         "Experiência com contato direto com usuários"
     )
@@ -56,7 +55,7 @@ def fill_profile(page: Page) -> None:
     # A reload proves the browser is reading the state persisted by the real API/database.
     page.reload(wait_until="domcontentloaded")
     expect(page.get_by_label("Nome completo", exact=True)).to_have_value(CANDIDATE_NAME)
-    expect(page.get_by_label("Skills", exact=True)).to_contain_text("")
+    expect(page.get_by_label("Skills", exact=True)).to_have_value(SKILLS)
 
 
 def assert_profile_persisted(page: Page) -> None:
