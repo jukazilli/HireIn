@@ -267,7 +267,10 @@ def upgrade() -> None:
             "profile_id", "normalized_name", name="uq_candidate_languages_profile_name"
         ),
         sa.CheckConstraint(
-            "proficiency IN ('BASIC','ELEMENTARY','INTERMEDIATE','UPPER_INTERMEDIATE','ADVANCED','FLUENT','NATIVE')",
+            (
+                "proficiency IN ('BASIC','ELEMENTARY','INTERMEDIATE',"
+                "'UPPER_INTERMEDIATE','ADVANCED','FLUENT','NATIVE')"
+            ),
             name="ck_candidate_languages_proficiency",
         ),
         *_provenance_constraints("candidate_languages"),
