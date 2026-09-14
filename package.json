@@ -1,0 +1,14 @@
+{
+  "name": "hirein",
+  "private": true,
+  "packageManager": "pnpm@12.4.1",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @hirein/web dev",
+    "build:web": "pnpm --filter @hirein/web build",
+    "check:web": "pnpm --filter @hirein/web check",
+    "generate:api-types": "pnpm --filter @hirein/generated-client generate"
+  }
+}

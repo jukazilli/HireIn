@@ -1,0 +1,13 @@
+{
+  "name": "@hirein/generated-client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "generate": "openapi-typescript ./openapi.json -o ./src/schema.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "typescript": "^6.0.0"
+  }
+}
