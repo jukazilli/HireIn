@@ -1,0 +1,71 @@
+from enum import StrEnum
+
+
+class FactSource(StrEnum):
+    USER_CONFIRMED = "USER_CONFIRMED"
+    RESUME_EXTRACTED = "RESUME_EXTRACTED"
+    ATS_IMPORTED = "ATS_IMPORTED"
+    AI_DRAFT = "AI_DRAFT"
+    SYSTEM_INFERRED = "SYSTEM_INFERRED"
+
+
+class FactKind(StrEnum):
+    RESPONSIBILITY = "RESPONSIBILITY"
+    ACHIEVEMENT = "ACHIEVEMENT"
+    TOOL = "TOOL"
+    DOMAIN = "DOMAIN"
+    PROJECT = "PROJECT"
+    OTHER = "OTHER"
+
+
+class WorkModel(StrEnum):
+    REMOTE = "REMOTE"
+    HYBRID = "HYBRID"
+    ONSITE = "ONSITE"
+
+
+class ContractType(StrEnum):
+    CLT = "CLT"
+    PJ = "PJ"
+    INTERNSHIP = "INTERNSHIP"
+    APPRENTICE = "APPRENTICE"
+    TEMPORARY = "TEMPORARY"
+    CONTRACTOR = "CONTRACTOR"
+    OTHER = "OTHER"
+
+
+class Seniority(StrEnum):
+    INTERN = "INTERN"
+    TRAINEE = "TRAINEE"
+    JUNIOR = "JUNIOR"
+    MID = "MID"
+    SENIOR = "SENIOR"
+    SPECIALIST = "SPECIALIST"
+    LEAD = "LEAD"
+    MANAGER = "MANAGER"
+    DIRECTOR = "DIRECTOR"
+    EXECUTIVE = "EXECUTIVE"
+
+
+class EducationStatus(StrEnum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    PAUSED = "PAUSED"
+    DROPPED = "DROPPED"
+
+
+class SkillLevel(StrEnum):
+    BEGINNER = "BEGINNER"
+    INTERMEDIATE = "INTERMEDIATE"
+    ADVANCED = "ADVANCED"
+    EXPERT = "EXPERT"
+
+
+class LanguageProficiency(StrEnum):
+    BASIC = "BASIC"
+    ELEMENTARY = "ELEMENTARY"
+    INTERMEDIATE = "INTERMEDIATE"
+    UPPER_INTERMEDIATE = "UPPER_INTERMEDIATE"
+    ADVANCED = "ADVANCED"
+    FLUENT = "FLUENT"
+    NATIVE = "NATIVE"

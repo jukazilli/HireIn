@@ -10,11 +10,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from hirein_api.db import create_engine
+from hirein_api.db import create_engine, create_session_factory
+from hirein_api.profile.routes import router as profile_router
 from hirein_api.settings import load_settings
 
 settings = load_settings()
 engine = create_engine(settings)
+session_factory = create_session_factory(engine)
 
 
 class HealthResponse(BaseModel):
@@ -29,7 +31,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="HireIn API",
-    version="0.1.0",
+    version="0.2.0",
     description="Core API for the HireIn local-first pilot.",
     lifespan=lifespan,
 )
@@ -41,6 +43,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+app.include_router(profile_router)
 
 
 @app.get("/health/live", response_model=HealthResponse, tags=["health"])
@@ -64,3 +67,4 @@ async def readiness(request: Request) -> HealthResponse:
 
 
 app.state.engine = engine
+app.state.session_factory = session_factory
