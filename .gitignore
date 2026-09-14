@@ -1,0 +1,42 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Pilot personal data
+.local-data/
+*.pdf
+*.docx
+*.resume.json
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / Svelte
+node_modules/
+.pnpm-store/
+apps/web/.svelte-kit/
+apps/web/build/
+apps/web/.vite/
+
+# Generated API artifacts
+packages/generated-client/openapi.json
+packages/generated-client/src/schema.d.ts
+
+# Browser/session artifacts
+.playwright/
+browser-data/
+storage-state*.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: hirein
+          POSTGRES_USER: hirein
+          POSTGRES_PASSWORD: hirein
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hirein -d hirein"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://hirein:hirein@localhost:5432/hirein
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.13"
+          python-version: "3.13"
+          enable-cache: true
+      - name: Sync Python workspace
+        run: uv sync --locked --all-packages --dev
+      - name: Ruff
+        run: uv run --package hirein-api ruff check services/api
+      - name: Mypy
+        run: uv run --package hirein-api mypy services/api/src
+      - name: Tests
+        run: uv run --package hirein-api pytest services/api/tests
+      - name: Migration smoke test
+        working-directory: services/api
+        run: uv run --package hirein-api alembic upgrade head
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Svelte checks
+        run: pnpm check:web
+      - name: Build web
+        run: pnpm build:web
+
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.13"
+          python-version: "3.13"
+          enable-cache: true
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Sync Python workspace
+        run: uv sync --locked --all-packages --dev
+      - name: Install TypeScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Export OpenAPI
+        run: uv run --package hirein-api python scripts/export_openapi.py
+      - name: Generate TypeScript contract
+        run: pnpm generate:api-types
+      - name: Verify generated contract
+        run: test -s packages/generated-client/src/schema.d.ts

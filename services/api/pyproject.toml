@@ -1,0 +1,46 @@
+[project]
+name = "hirein-api"
+version = "0.1.0"
+description = "HireIn core API"
+requires-python = ">=3.13,<3.15"
+dependencies = [
+  "alembic==1.20.0",
+  "fastapi==0.141.1",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic==2.13.5",
+  "sqlalchemy==2.0.52",
+  "uvicorn==0.52.4",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "mypy>=1.18,<2",
+  "pytest>=8.4,<9",
+  "pytest-asyncio>=1.1,<2",
+  "ruff==0.16.7",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "hirein_api"
+module-root = "src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["hirein_api"]
