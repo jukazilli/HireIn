@@ -49,6 +49,7 @@
   };
 
   const ratingLabels = ['Irrelevante', 'Fraca', 'Razoável', 'Boa', 'Excelente'];
+  const ratingShort = ['Não', 'Pouco', 'Talvez', 'Sim', 'Muito'];
   const errorLabels: Record<string, string> = {
     MISSING_PROFILE_EVIDENCE: 'Falta evidência no perfil',
     BAD_JOB_NORMALIZATION: 'Normalização ruim da vaga',
@@ -82,6 +83,8 @@
   let blockerReal = false;
   let reason = '';
   let errorCategory = '';
+
+  $: reviewedCount = jobs.filter((job) => job.evaluation).length;
 
   function fillEvaluation(job: ReviewJob) {
     relevance = job.evaluation?.relevance ?? null;
@@ -165,7 +168,7 @@
         job.job_id === selectedJob?.job_id ? { ...job, evaluation: saved } : job
       );
       selectedJob = jobs.find((job) => job.job_id === selectedJob?.job_id) ?? selectedJob;
-      message = 'Avaliação humana salva.';
+      message = 'Sua avaliação foi salva sem alterar o algoritmo.';
       await loadReport();
     } catch (reasonValue) {
       error = reasonValue instanceof Error ? reasonValue.message : 'Não foi possível salvar a avaliação.';
@@ -181,168 +184,159 @@
 </script>
 
 <svelte:head>
-  <title>Revisão do piloto · HireIn</title>
-  <meta
-    name="description"
-    content="Rotulagem humana e avaliação do ranking do Match do piloto HireIn."
-  />
+  <title>Revisar vagas · HireIn</title>
+  <meta name="description" content="Avaliação humana do Match no piloto HireIn." />
 </svelte:head>
 
-<main>
-  <header>
-    <div>
-      <nav><a href="/jobs/match">← Match</a><a href="/jobs">Job Core</a></nav>
-      <p class="eyebrow">HireIn · Pilot Evaluation</p>
-      <h1>Ensine o produto com decisões reais.</h1>
-      <p class="lead">
-        Compare o Match com a sua percepção da vaga. As suas notas são a referência do benchmark;
-        elas não alteram o algoritmo automaticamente.
+<main class="app-main">
+  <section class="page-intro">
+    <div class="page-intro-copy">
+      <p class="eyebrow">Revisão humana</p>
+      <h1 class="page-title">O algoritmo tem uma opinião. Agora queremos a sua.</h1>
+      <p class="page-lead">
+        Compare o Match com a sua leitura da oportunidade. Essa diferença mostra onde o produto precisa
+        melhorar antes de receber mais automação ou IA.
       </p>
     </div>
-    <div class="guardrail">
-      <span>Dados reais no Git</span><strong>não</strong>
-      <span>IA no benchmark</span><strong>não</strong>
-      <span>Meta inicial</span><strong>30–50 vagas</strong>
-    </div>
-  </header>
+    <aside class="context-note">
+      <strong>{reviewedCount}/{jobs.length} vagas revisadas.</strong>
+      A sua nota é referência do benchmark. Ela não treina nem altera o Match automaticamente.
+    </aside>
+  </section>
 
   {#if report}
-    <section class="metric-strip" aria-label="Métricas do piloto">
-      <div><span>Avaliadas</span><strong>{report.metrics.sample_count}</strong></div>
-      <div><span>Boas ou excelentes</span><strong>{report.metrics.relevant_count}</strong></div>
+    <section class="benchmark-line" aria-label="Sinais atuais do benchmark">
       <div><span>Recall@5</span><strong>{percent(report.metrics.recall_at_5)}</strong></div>
       <div><span>NDCG@5</span><strong>{percent(report.metrics.ndcg_at_5)}</strong></div>
       <div><span>Cobertura média</span><strong>{coverage(report.metrics.average_coverage)}</strong></div>
+      <p>{report.metrics.sample_count} avaliações · {report.metrics.relevant_count} vagas boas ou excelentes</p>
     </section>
   {:else}
-    <section class="intro-note">
-      O benchmark começa quando você salvar a primeira avaliação. Para uma leitura útil de ranking,
-      busque pelo menos 5 vagas; o gate de decisão continua sendo 30–50.
-    </section>
+    <div class="status-notice benchmark-note">O benchmark aparece depois da primeira avaliação. O smoke test começa com 5 vagas; a decisão técnica vem entre 30 e 50.</div>
   {/if}
 
-  {#if error}<div class="notice error" aria-live="polite">{error}</div>{/if}
-  {#if message}<div class="notice success" aria-live="polite">{message}</div>{/if}
+  {#if error}<div class="status-notice error message-space" aria-live="polite">{error}</div>{/if}
+  {#if message}<div class="status-notice success message-space" aria-live="polite">{message}</div>{/if}
 
-  <div class="workspace">
-    <section class="card jobs-card">
-      <div class="section-title">
-        <div><p class="eyebrow">Fila de revisão</p><h2>Vagas</h2></div>
-        <span>{jobs.filter((job) => job.evaluation).length}/{jobs.length} avaliadas</span>
+  <div class="split-workspace review-workspace">
+    <aside class="surface surface-padded sticky-panel queue-panel">
+      <div class="section-head queue-head">
+        <div class="section-head-copy">
+          <p class="section-kicker">Fila</p>
+          <h2 class="section-title">Escolha a próxima</h2>
+        </div>
+        <span class="section-meta">{reviewedCount}/{jobs.length}</span>
       </div>
 
       {#if loading}
-        <p class="empty">Carregando…</p>
+        <div class="status-notice">Carregando vagas…</div>
       {:else if jobs.length === 0}
-        <p class="empty">Cadastre vagas no Job Core para iniciar o piloto.</p>
+        <div class="empty-state">Cadastre vagas reais antes de iniciar a revisão.</div>
       {:else}
-        <div class="job-list">
+        <div class="opportunity-list review-queue">
           {#each jobs as job}
-            <button
-              type="button"
-              class:selected={selectedJob?.job_id === job.job_id}
-              onclick={() => selectJob(job)}
-            >
+            <button class="opportunity-card queue-card" class:selected={selectedJob?.job_id === job.job_id} type="button" onclick={() => selectJob(job)}>
               <div>
-                <small>{job.company_name}</small>
-                <strong>{job.title}</strong>
-                <span>{job.location_text ?? 'Local n/d'} · {job.work_model ?? 'modalidade n/d'}</span>
+                <p class="opportunity-company">{job.company_name}</p>
+                <h3 class="opportunity-title">{job.title}</h3>
+                <p class="opportunity-meta">{job.location_text ?? 'Local n/d'} · {job.work_model ?? 'modalidade n/d'}</p>
               </div>
-              {#if job.evaluation}
-                <b title={ratingLabels[job.evaluation.relevance]}>{job.evaluation.relevance}/4</b>
-              {:else}
-                <em>avaliar</em>
-              {/if}
+              <div class="opportunity-side">
+                {#if job.evaluation}
+                  <strong class="human-rating">{job.evaluation.relevance}/4</strong>
+                  <span>{ratingLabels[job.evaluation.relevance]}</span>
+                {:else}
+                  <strong class="pending-label">Pendente</strong>
+                {/if}
+              </div>
             </button>
           {/each}
         </div>
       {/if}
-    </section>
+    </aside>
 
-    <section class="card review-card">
+    <section class="work-surface review-panel">
       {#if !selectedJob}
-        <div class="placeholder">
-          <p class="eyebrow">Avaliação humana</p>
-          <h2>Escolha uma vaga.</h2>
-          <p>Primeiro veja o Match; depois registre o quanto essa oportunidade faz sentido para você.</p>
+        <div class="review-placeholder">
+          <span class="placeholder-line"></span>
+          <p class="section-kicker">Sua leitura</p>
+          <h2>Escolha uma vaga para comparar.</h2>
+          <p>Primeiro mostramos o Match. Depois você registra o quanto essa oportunidade realmente faz sentido para o seu momento.</p>
         </div>
       {:else}
-        <div class="review-head">
-          <div>
-            <p class="eyebrow">Sua referência</p>
+        <div class="work-section review-hero">
+          <div class="job-identity">
+            <p class="section-kicker">{selectedJob.company_name}</p>
             <h2>{selectedJob.title}</h2>
-            <p>{selectedJob.company_name}</p>
+            <p>{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
           </div>
-          {#if loadingMatch}
-            <div class="match-score muted">…</div>
-          {:else if match}
-            <div class="match-score">
+          <div class="algorithm-read">
+            <span>Leitura do HireIn</span>
+            {#if loadingMatch}
+              <strong>…</strong>
+              <small>Analisando</small>
+            {:else if match}
               <strong>{match.score === null ? '—' : `${match.score}%`}</strong>
-              <span>{bandLabels[match.band] ?? match.band}</span>
-            </div>
-          {/if}
+              <small>{bandLabels[match.band] ?? match.band}</small>
+            {:else}
+              <strong>—</strong>
+            {/if}
+          </div>
         </div>
 
         {#if match}
-          <div class="match-summary">
-            <div><span>Cobertura</span><strong>{match.evaluation_coverage}%</strong></div>
-            <div><span>Req. atendidos</span><strong>{match.matched_required}</strong></div>
-            <div><span>Req. ausentes</span><strong>{match.missing_required}</strong></div>
-            <div><span>Não avaliáveis</span><strong>{match.unknown_requirements}</strong></div>
+          <div class="work-section match-readout">
+            <div class="readout-item"><span>Cobertura</span><strong>{match.evaluation_coverage}%</strong></div>
+            <div class="readout-item"><span>Obrigatórios atendidos</span><strong>{match.matched_required}</strong></div>
+            <div class="readout-item"><span>Gaps obrigatórios</span><strong>{match.missing_required}</strong></div>
+            <div class="readout-item"><span>Não avaliáveis</span><strong>{match.unknown_requirements}</strong></div>
           </div>
         {/if}
 
-        <div class="divider"></div>
-        <fieldset>
-          <legend>Quanto essa vaga realmente interessa?</legend>
-          <div class="rating-grid">
+        <div class="work-section human-read">
+          <div class="section-head">
+            <div class="section-head-copy">
+              <p class="section-kicker">Sua decisão</p>
+              <h2 class="section-title">Quanto essa vaga faz sentido para você?</h2>
+              <p class="section-description">Não tente concordar com o score. Responda como candidato.</p>
+            </div>
+          </div>
+
+          <div class="rating-scale" role="group" aria-label="Relevância da vaga de zero a quatro">
             {#each ratingLabels as label, value}
-              <button
-                class:active={relevance === value}
-                type="button"
-                onclick={() => (relevance = value)}
-              >
-                <strong>{value}</strong><span>{label}</span>
+              <button class:active={relevance === value} type="button" onclick={() => (relevance = value)}>
+                <span>{value}</span>
+                <strong>{ratingShort[value]}</strong>
+                <small>{label}</small>
               </button>
             {/each}
           </div>
-        </fieldset>
 
-        <label class="checkbox-row">
-          <input type="checkbox" bind:checked={blockerReal} />
-          <span><strong>Existe blocker real para mim</strong><small>Algo que por si só faria você descartar a vaga.</small></span>
-        </label>
+          <label class="blocker-row" class:active={blockerReal}>
+            <input type="checkbox" bind:checked={blockerReal} />
+            <span><strong>Existe um blocker real</strong><small>Algo que sozinho faria você descartar esta oportunidade, independentemente do score.</small></span>
+          </label>
 
-        <label>
-          O Match errou principalmente em quê? <span class="optional">opcional</span>
-          <select bind:value={errorCategory}>
-            <option value="">Nenhum erro dominante / ainda não sei</option>
-            {#each Object.entries(errorLabels) as [value, label]}
-              <option {value}>{label}</option>
-            {/each}
-          </select>
-        </label>
+          <div class="form-grid review-fields">
+            <label class="field">Onde o Match mais errou? <small>Opcional</small>
+              <select bind:value={errorCategory}>
+                <option value="">Nenhum erro dominante / ainda não sei</option>
+                {#each Object.entries(errorLabels) as [value, label]}
+                  <option {value}>{label}</option>
+                {/each}
+              </select>
+            </label>
+            <label class="field">Por quê? <small>Opcional, mas valioso</small>
+              <textarea rows="5" maxlength="2000" bind:value={reason} placeholder="Ex.: a vaga é boa, mas Protheus e ERP aparecem com nomes diferentes e o Match perdeu essa equivalência."></textarea>
+            </label>
+          </div>
 
-        <label>
-          Motivo <span class="optional">opcional, mas valioso</span>
-          <textarea
-            rows="5"
-            maxlength="2000"
-            bind:value={reason}
-            placeholder="Ex.: a vaga é boa, mas Protheus e ERP aparecem com nomes diferentes e o Match perdeu essa equivalência."
-          ></textarea>
-        </label>
-
-        <div class="save-row">
-          <small>Essa nota não treina nem altera o algoritmo automaticamente.</small>
-          <button
-            class="primary"
-            type="button"
-            disabled={saving || relevance === null}
-            onclick={saveEvaluation}
-          >
-            {saving ? 'Salvando…' : 'Salvar avaliação'}
-          </button>
+          <div class="action-row save-review">
+            <span class="muted small">Sua avaliação fica separada do algoritmo para podermos medir melhora de verdade.</span>
+            <button class="btn btn-primary" type="button" disabled={saving || relevance === null} onclick={saveEvaluation}>
+              {saving ? 'Salvando avaliação…' : 'Salvar minha avaliação'}
+            </button>
+          </div>
         </div>
       {/if}
     </section>
@@ -350,83 +344,64 @@
 </main>
 
 <style>
-  :global(*) { box-sizing: border-box; }
-  :global(body) { margin: 0; min-width: 320px; background: #f7f7fa; color: #18181f; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  main { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 3rem 0 5rem; }
-  header { display: flex; justify-content: space-between; gap: 2rem; align-items: flex-end; margin-bottom: 1.2rem; }
-  nav { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
-  nav a { color: #555361; text-decoration: none; font-size: .9rem; }
-  h1 { max-width: 760px; margin: .35rem 0 .8rem; font-size: clamp(2.2rem, 5vw, 4.1rem); line-height: 1; letter-spacing: -.055em; }
-  h2, p { margin-top: 0; }
-  .lead { max-width: 720px; color: #5e5c69; line-height: 1.6; }
-  .eyebrow { margin: 0; color: #6a6877; font-size: .75rem; font-weight: 760; letter-spacing: .09em; text-transform: uppercase; }
-  .guardrail { min-width: 230px; display: grid; grid-template-columns: 1fr auto; gap: .65rem 1rem; padding: 1rem 1.1rem; border: 1px solid #e4e3e9; border-radius: 16px; background: white; font-size: .82rem; }
-  .metric-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .65rem; margin: 1rem 0; }
-  .metric-strip div { display: grid; gap: .3rem; padding: .9rem 1rem; border: 1px solid #e7e6eb; border-radius: 14px; background: white; }
-  .metric-strip span { color: #777480; font-size: .76rem; }
-  .metric-strip strong { font-size: 1.25rem; }
-  .intro-note, .notice { margin: 1rem 0; padding: 1rem 1.1rem; border: 1px solid #e5e3cf; border-radius: 14px; background: #fffef5; color: #5d5940; line-height: 1.5; }
-  .notice.error { border-color: #ead5d5; background: #fff8f8; color: #823a3a; }
-  .notice.success { border-color: #d8e5d9; background: #f8fff8; color: #426348; }
-  .workspace { display: grid; grid-template-columns: minmax(320px, .75fr) minmax(0, 1.25fr); gap: 1rem; align-items: start; }
-  .card { padding: clamp(1.2rem, 2.6vw, 1.8rem); border: 1px solid #e6e5eb; border-radius: 22px; background: white; }
-  .section-title, .review-head, .save-row { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
-  .section-title { margin-bottom: 1rem; }
-  .section-title h2 { margin: .2rem 0 0; }
-  .section-title > span { color: #777480; font-size: .82rem; }
-  .job-list { display: grid; gap: .55rem; max-height: 720px; overflow: auto; padding-right: .2rem; }
-  .job-list > button { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .9rem; border: 1px solid #ecebf0; border-radius: 14px; background: white; color: inherit; text-align: left; cursor: pointer; }
-  .job-list > button.selected { border-color: #b8b6c1; background: #fafafd; }
-  .job-list div { display: grid; gap: .18rem; }
-  .job-list small, .job-list span { color: #777480; }
-  .job-list span { font-size: .78rem; }
-  .job-list b { min-width: 42px; text-align: center; font-size: .82rem; }
-  .job-list em { color: #817e8b; font-size: .78rem; font-style: normal; }
-  .placeholder { min-height: 350px; display: grid; place-content: center; max-width: 520px; color: #66636f; }
-  .placeholder h2 { margin: .4rem 0 .6rem; color: #18181f; }
-  .review-head { align-items: flex-start; }
-  .review-head h2 { margin: .25rem 0; }
-  .review-head p:last-child { color: #6c6975; }
-  .match-score { min-width: 120px; display: grid; justify-items: end; }
-  .match-score strong { font-size: 2.6rem; line-height: 1; letter-spacing: -.055em; }
-  .match-score span { margin-top: .35rem; color: #6d6a76; font-size: .82rem; font-weight: 700; }
-  .match-score.muted { color: #aaa8b0; font-size: 2rem; }
-  .match-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; margin-top: 1rem; }
-  .match-summary div { display: grid; gap: .28rem; padding: .8rem; border: 1px solid #eeedf1; border-radius: 12px; }
-  .match-summary span { color: #777480; font-size: .72rem; }
-  .divider { height: 1px; margin: 1.35rem 0; background: #eeedf1; }
-  fieldset { margin: 0 0 1.2rem; padding: 0; border: 0; }
-  legend { margin-bottom: .75rem; font-size: .88rem; font-weight: 720; }
-  .rating-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .45rem; }
-  .rating-grid button { display: grid; gap: .25rem; min-height: 70px; padding: .65rem .4rem; border: 1px solid #dfdee5; border-radius: 12px; background: white; color: #34323b; cursor: pointer; }
-  .rating-grid button.active { border-color: #222128; background: #222128; color: white; }
-  .rating-grid strong { font-size: 1.15rem; }
-  .rating-grid span { font-size: .68rem; }
-  label { display: grid; gap: .45rem; margin-top: 1rem; color: #45434e; font-size: .84rem; }
-  select, textarea { width: 100%; border: 1px solid #dcdbe2; border-radius: 11px; background: white; color: #1f1e24; font: inherit; padding: .72rem .78rem; }
-  textarea { resize: vertical; line-height: 1.45; }
-  .optional { color: #8b8893; font-weight: 400; }
-  .checkbox-row { grid-template-columns: auto 1fr; align-items: start; padding: .85rem; border: 1px solid #ecebf0; border-radius: 12px; }
-  .checkbox-row input { margin-top: .18rem; }
-  .checkbox-row span { display: grid; gap: .18rem; }
-  .checkbox-row small { color: #777480; font-weight: 400; }
-  .save-row { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #eeedf1; }
-  .save-row small { max-width: 380px; color: #777480; line-height: 1.4; }
-  .primary { border: 0; border-radius: 11px; padding: .78rem 1rem; background: #1f1e24; color: white; font-weight: 720; cursor: pointer; }
-  .primary:disabled { opacity: .45; cursor: not-allowed; }
-  .empty { color: #777480; }
+  .benchmark-line { display: flex; align-items: center; gap: 1.35rem; margin-bottom: 1rem; padding: .85rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .benchmark-line > div { display: flex; gap: .4rem; align-items: baseline; }
+  .benchmark-line span { color: var(--text-muted); font-size: .75rem; }
+  .benchmark-line strong { font-size: .92rem; }
+  .benchmark-line p { margin: 0 0 0 auto; color: var(--text-muted); font-size: .76rem; }
+  .benchmark-note { margin-bottom: 1rem; }
+  .message-space { margin-bottom: 1rem; }
+  .review-workspace { grid-template-columns: minmax(300px, .8fr) minmax(0, 1.5fr); }
+  .queue-panel { max-height: calc(100vh - var(--nav-height) - 2rem); overflow: auto; }
+  .queue-head { margin-bottom: .8rem; }
+  .queue-card { padding: .8rem; }
+  .human-rating { color: var(--brand-700); font-family: var(--font-display); font-size: 1rem; }
+  .pending-label { color: var(--text-muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
+  .review-panel { min-height: 520px; }
+  .review-placeholder { min-height: 520px; display: grid; align-content: center; justify-items: start; padding: clamp(1.5rem, 6vw, 4rem); }
+  .review-placeholder h2 { margin: .35rem 0 .5rem; font-size: clamp(1.8rem, 4vw, 3rem); }
+  .review-placeholder p:last-child { max-width: 560px; color: var(--text-muted); line-height: 1.6; }
+  .placeholder-line { width: 54px; height: 7px; margin-bottom: 1.2rem; border-radius: 999px; background: var(--lime-400); transform: rotate(-5deg); }
+  .review-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+  .job-identity h2 { margin: .2rem 0 .3rem; font-size: clamp(1.6rem, 3vw, 2.4rem); }
+  .job-identity > p:last-child { margin: 0; color: var(--text-muted); font-size: .82rem; }
+  .algorithm-read { display: grid; min-width: 150px; justify-items: end; }
+  .algorithm-read span { color: var(--text-muted); font-size: .72rem; }
+  .algorithm-read strong { font-family: var(--font-display); font-size: 2.7rem; line-height: 1; letter-spacing: -.06em; color: var(--brand-700); }
+  .algorithm-read small { margin-top: .2rem; color: var(--text-muted); }
+  .match-readout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; padding-top: 0; padding-bottom: 0; }
+  .readout-item { display: grid; gap: .2rem; padding: 1rem; border-left: 1px solid var(--border); }
+  .readout-item:first-child { border-left: 0; padding-left: 0; }
+  .readout-item span { color: var(--text-muted); font-size: .72rem; }
+  .readout-item strong { font-size: 1rem; }
+  .rating-scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: .45rem; }
+  .rating-scale button { display: grid; gap: .12rem; min-height: 92px; padding: .65rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: white; color: var(--text-secondary); cursor: pointer; text-align: left; }
+  .rating-scale button:hover { border-color: var(--brand-200); }
+  .rating-scale button.active { border-color: var(--brand-400); background: var(--brand-50); color: var(--brand-800); box-shadow: inset 0 -3px 0 var(--lime-400); }
+  .rating-scale button > span { color: var(--text-muted); font-size: .68rem; }
+  .rating-scale button > strong { font-size: .9rem; }
+  .rating-scale button > small { color: var(--text-muted); font-size: .68rem; }
+  .blocker-row { display: flex; gap: .75rem; align-items: flex-start; margin-top: 1rem; padding: .9rem; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
+  .blocker-row.active { border-color: #f0caca; background: var(--danger-soft); }
+  .blocker-row input { margin-top: .2rem; accent-color: var(--danger); }
+  .blocker-row span { display: grid; gap: .15rem; }
+  .blocker-row small { color: var(--text-muted); font-size: .75rem; }
+  .review-fields { margin-top: 1rem; }
+  .save-review { margin-bottom: 0; }
   @media (max-width: 900px) {
-    header { display: grid; align-items: stretch; }
-    .guardrail { min-width: 0; }
-    .metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .workspace { grid-template-columns: 1fr; }
-    .job-list { max-height: 430px; }
+    .benchmark-line { flex-wrap: wrap; }
+    .benchmark-line p { width: 100%; margin-left: 0; }
+    .queue-panel { max-height: none; }
+    .match-readout { grid-template-columns: repeat(2, 1fr); }
+    .readout-item:nth-child(3) { border-left: 0; }
   }
-  @media (max-width: 620px) {
-    main { width: min(100% - 1rem, 1180px); padding-top: 1.5rem; }
-    .rating-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .match-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .review-head { align-items: center; }
-    .save-row { align-items: flex-start; flex-direction: column; }
+  @media (max-width: 640px) {
+    .review-hero { flex-direction: column; }
+    .algorithm-read { justify-items: start; }
+    .rating-scale { grid-template-columns: 1fr; }
+    .rating-scale button { min-height: 0; grid-template-columns: 28px 1fr auto; align-items: center; text-align: left; }
+    .rating-scale button > small { justify-self: end; }
+    .match-readout { grid-template-columns: 1fr 1fr; }
+    .readout-item { border-left: 0; border-top: 1px solid var(--border); padding-left: 0; }
   }
 </style>
