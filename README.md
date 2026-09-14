@@ -30,6 +30,7 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 6. [Custos](docs/06-COSTS.md)
 7. [Privacy, Security & LGPD](docs/07-PRIVACY-SECURITY-LGPD.md)
 8. [Roadmap orientado a validação](docs/08-ROADMAP.md)
+9. [Architecture Decision Records](docs/adr/README.md)
 
 ## Decisões técnicas atuais
 
@@ -47,7 +48,7 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 | LLM | provider-agnostic, escolha por tarefa/eval |
 | Execução do piloto | local-first |
 
-Essas decisões não são permanentes. Cada uma possui critérios de revisão documentados em `03-ARCHITECTURE.md`.
+As decisões estruturais possuem ADRs com contexto, alternativas, trade-offs e gatilhos de revisão. LLM e embeddings permanecem propositalmente sem escolha definitiva até existirem evals com dados PT-BR representativos.
 
 ## Orçamento do piloto
 
@@ -105,12 +106,15 @@ Depois o experimento cresce para aproximadamente 30–50 vagas, criando o primei
 
 Não haverá Auto Apply irrestrito no primeiro marco.
 
-## Próximos documentos técnicos
+## Governança técnica
 
-As próximas decisões relevantes deverão ser registradas como ADRs, especialmente:
+Antes de alterar uma decisão estrutural, consulte `docs/adr/README.md`.
+
+Novas decisões relevantes devem ser registradas como ADRs. Em especial, ainda deverão receber ADRs futuros quando houver evidência suficiente:
 
 - modelo de embeddings;
-- estratégia de LLM;
+- LLM default por tarefa;
 - autenticação futura;
-- modelo de execução remota do browser;
-- eventual migração de queue.
+- execução remota do browser;
+- eventual migração de queue;
+- storage remoto de documentos.
