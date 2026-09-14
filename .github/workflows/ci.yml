@@ -36,6 +36,11 @@ jobs:
           enable-cache: true
       - name: Sync Python workspace
         run: uv sync --all-packages --dev
+      - name: Publish uv lockfile
+        uses: actions/upload-artifact@v7
+        with:
+          name: bootstrap-uv-lock
+          path: uv.lock
       - name: Ruff
         run: uv run --package hirein-api ruff check services/api
       - name: Mypy
@@ -59,6 +64,11 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
+      - name: Publish pnpm lockfile
+        uses: actions/upload-artifact@v7
+        with:
+          name: bootstrap-pnpm-lock
+          path: pnpm-lock.yaml
       - name: Svelte checks
         run: pnpm check:web
       - name: Build web
