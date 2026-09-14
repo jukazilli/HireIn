@@ -500,9 +500,10 @@ async function demoFetch(url: string, init?: RequestInit): Promise<Response> {
     return json(summary(job), 201);
   }
 
-  const match = path.match(/^\/jobs\/([^/]+)\/match$/);
-  if (match && method === 'GET') {
-    const result = matchResult(match[1]);
+  const matchCapture = path.match(/^\/jobs\/([^/]+)\/match$/);
+  const matchedJobId = matchCapture?.[1];
+  if (matchedJobId && method === 'GET') {
+    const result = matchResult(matchedJobId);
     return result ? json(result) : json({ detail: 'Vaga não encontrada.' }, 404);
   }
 
@@ -520,17 +521,18 @@ async function demoFetch(url: string, init?: RequestInit): Promise<Response> {
     })));
   }
 
-  const evaluation = path.match(/^\/evals\/jobs\/([^/]+)$/);
-  if (evaluation && method === 'PUT') {
+  const evaluationCapture = path.match(/^\/evals\/jobs\/([^/]+)$/);
+  const evaluatedJobId = evaluationCapture?.[1];
+  if (evaluatedJobId && method === 'PUT') {
     const body = requestBody(init);
     const saved: Evaluation = {
-      job_id: evaluation[1],
+      job_id: evaluatedJobId,
       relevance: Number(body.relevance ?? 0),
       blocker_real: Boolean(body.blocker_real),
       reason: typeof body.reason === 'string' ? body.reason : null,
       error_category: typeof body.error_category === 'string' ? body.error_category : null
     };
-    state.evaluations[evaluation[1]] = saved;
+    state.evaluations[evaluatedJobId] = saved;
     writeState(state);
     return json(saved);
   }
