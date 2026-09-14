@@ -10,10 +10,5 @@
     "build:web": "pnpm --filter @hirein/web build",
     "check:web": "pnpm --filter @hirein/web check",
     "generate:api-types": "pnpm --filter @hirein/generated-client generate"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
   }
 }
