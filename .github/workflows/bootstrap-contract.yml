@@ -1,0 +1,48 @@
+name: Bootstrap generated contract
+
+on:
+  push:
+    branches:
+      - chore/contract-first-frontend
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: chore/contract-first-frontend
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.13"
+          python-version: "3.13"
+          enable-cache: true
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Sync Python workspace
+        run: uv sync --locked --all-packages --dev
+      - name: Install TypeScript dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate contract
+        run: |
+          uv run --package hirein-api python scripts/export_openapi.py
+          pnpm generate:api-types
+      - name: Commit generated schema
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f packages/generated-client/src/schema.d.ts
+          if git diff --cached --quiet; then
+            echo "Contract already current."
+            exit 0
+          fi
+          git commit -m "chore: version generated API contract"
+          git push origin HEAD:chore/contract-first-frontend
