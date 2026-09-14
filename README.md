@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** descoberta, arquitetura e preparação do piloto individual.
+> **Fase atual:** documentação-base concluída e preparação da primeira vertical slice do piloto individual.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -28,6 +28,8 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 4. [Engenharia](docs/04-ENGINEERING.md)
 5. [Infraestrutura](docs/05-INFRASTRUCTURE.md)
 6. [Custos](docs/06-COSTS.md)
+7. [Privacy, Security & LGPD](docs/07-PRIVACY-SECURITY-LGPD.md)
+8. [Roadmap orientado a validação](docs/08-ROADMAP.md)
 
 ## Decisões técnicas atuais
 
@@ -59,32 +61,56 @@ Teto experimental IA: até US$ 5/mês somente se necessário
 
 O objetivo é pagar somente depois que um gargalo ou ganho de qualidade estiver comprovado.
 
-## Próximos documentos
+## Gate de expansão
 
-7. Privacy, Security & LGPD
-8. Roadmap
-9. ADRs de decisões que exigirem benchmark/alteração arquitetural
+O HireIn não será aberto a terceiros apenas porque o piloto funciona tecnicamente.
+
+A sequência definida é:
+
+```text
+piloto individual
+      ↓
+validar valor e confiabilidade
+      ↓
+formalizar privacy/security/LGPD
+      ↓
+private beta pequeno
+      ↓
+validar segurança operacional
+      ↓
+escalar
+```
+
+O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-O primeiro marco de implementação deverá provar o ciclo:
+A primeira implementação deverá ser uma vertical slice pequena:
 
 ```text
-perfil
-  ↓
-vaga real
-  ↓
-match explicável
-  ↓
-candidatura preparada
-  ↓
-preenchimento assistido
-  ↓
+1 perfil real
+     ↓
+1 vaga real
+     ↓
+normalização
+     ↓
+Match explicável
+     ↓
+currículo/respostas preparados
+     ↓
 revisão humana
-  ↓
-envio
-  ↓
-tracking
 ```
 
+Depois o experimento cresce para aproximadamente 30–50 vagas, criando o primeiro dataset brasileiro para avaliar matching e orientar a escolha de embeddings.
+
 Não haverá Auto Apply irrestrito no primeiro marco.
+
+## Próximos documentos técnicos
+
+As próximas decisões relevantes deverão ser registradas como ADRs, especialmente:
+
+- modelo de embeddings;
+- estratégia de LLM;
+- autenticação futura;
+- modelo de execução remota do browser;
+- eventual migração de queue.
