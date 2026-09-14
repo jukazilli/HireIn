@@ -2,63 +2,62 @@
 
 ## Status
 
-Esta etapa implementa a baseline de avaliação do Match antes de embeddings, reranking ou LLM.
+A baseline de avaliação do Match está implementada e agora possui um workspace visual para o piloto.
 
-O objetivo não é melhorar o algoritmo nesta fase. É criar um mecanismo confiável para provar se uma mudança futura realmente melhora a priorização de vagas.
+O objetivo continua sendo medir antes de adicionar complexidade. Esta etapa não melhora o algoritmo automaticamente e não adiciona embeddings, reranking ou LLM.
 
 ---
 
 ## 1. Princípio
 
-O HireIn só deve adicionar complexidade quando houver um erro mensurável que a justifique.
-
-A sequência é:
+O HireIn só deve adicionar tecnologia quando houver um erro mensurável que a justifique.
 
 ```text
 Match v0 determinístico
         ↓
 30–50 vagas reais
         ↓
-labels humanas
+avaliação humana 0–4
         ↓
-relatório de ranking
+Recall / NDCG / cobertura
         ↓
 classificação dos erros
         ↓
 decisão técnica baseada em evidência
 ```
 
-Nenhum dataset real é versionado.
+A avaliação humana é a referência independente. Ela nunca deve ser alterada para fazer o algoritmo parecer melhor.
 
 ---
 
-## 2. Dados reais ficam fora do Git
+## 2. Onde os dados reais ficam
 
-A estrutura local é:
+Dados reais não são versionados no Git.
+
+O piloto pode usar duas formas locais complementares:
+
+1. PostgreSQL local, usado pela interface `/jobs/review`;
+2. `.local-data/`, usado pelo CLI de importação e relatórios offline.
+
+A estrutura local opcional permanece:
 
 ```text
 .local-data/
 ├─ profile/
 ├─ resumes/
 ├─ jobs/
-│  ├─ vaga-001.json
-│  └─ ...
 └─ evals/
-   ├─ matching-labels.json
-   ├─ import-manifest.json
-   ├─ matching-report.json
-   └─ matching-report.md
 ```
 
-`.local-data/` já está ignorado pelo repositório.
+`.local-data/` está ignorado pelo repositório.
 
-As únicas amostras versionadas ficam em `evals/matching/fixtures/` e são explicitamente sintéticas.
+As únicas amostras versionadas ficam em `evals/matching/fixtures/` e são sintéticas.
 
 ---
 
 ## 3. Unidade de avaliação
 
-Cada vaga real recebe uma label humana independente do score do HireIn:
+Cada vaga pode receber uma avaliação humana:
 
 ```text
 0 = irrelevante
@@ -72,14 +71,83 @@ Também podem ser registrados:
 
 ```text
 blocker_real = true | false
-reason = texto livre
+reason = texto livre opcional
+error_category = categoria opcional do erro dominante
 ```
 
-A label deve refletir a avaliação humana da oportunidade, não uma tentativa de reproduzir o resultado do algoritmo.
+A nota representa a percepção real do piloto sobre a oportunidade. Ela não deve copiar o score do HireIn.
 
 ---
 
-## 4. O que o benchmark mede
+## 4. Workspace visual
+
+A rota do piloto é:
+
+```text
+/jobs/review
+```
+
+Ela permite:
+
+- escolher uma vaga já cadastrada;
+- visualizar o Match atual;
+- comparar score e cobertura com a percepção humana;
+- registrar nota `0–4`;
+- registrar blocker real;
+- escrever um motivo livre;
+- classificar o erro dominante quando houver;
+- acompanhar métricas agregadas sem editar JSON manualmente.
+
+As labels ficam persistidas no PostgreSQL do piloto pela tabela:
+
+```text
+pilot_job_evaluations
+```
+
+A relação é 1:1 com `job_postings`.
+
+---
+
+## 5. API de avaliação
+
+### Listar vagas para revisão
+
+```text
+GET /api/v1/evals/jobs
+```
+
+Retorna todas as vagas do Job Core junto da avaliação humana existente, quando houver.
+
+### Salvar avaliação
+
+```text
+PUT /api/v1/evals/jobs/{job_id}
+```
+
+Payload:
+
+```json
+{
+  "relevance": 4,
+  "blocker_real": false,
+  "reason": "A oportunidade faz sentido para meu perfil.",
+  "error_category": null
+}
+```
+
+### Relatório atual
+
+```text
+GET /api/v1/evals/report
+```
+
+O relatório recalcula o Match para as vagas rotuladas e produz a baseline usando as labels humanas persistidas.
+
+Isso é importante: se o Match mudar em uma branch futura, as mesmas decisões humanas podem ser reutilizadas para comprovar se houve melhora ou regressão.
+
+---
+
+## 6. O que o benchmark mede
 
 A baseline produz:
 
@@ -98,7 +166,7 @@ O NDCG preserva toda a escala `0–4`, premiando rankings que colocam vagas exce
 
 ---
 
-## 5. Como vagas sem score são tratadas
+## 7. Como vagas sem score são tratadas
 
 Uma vaga com:
 
@@ -107,106 +175,15 @@ score = null
 band = INSUFFICIENT_DATA
 ```
 
-não recebe um score artificial para entrar no ranking.
+não recebe score artificial.
 
-Na baseline ela é posicionada depois das vagas com score.
-
-Isso torna problemas de cobertura visíveis em vez de escondê-los.
+Na baseline ela é posicionada depois das vagas com score. Assim, falta de cobertura aparece como problema mensurável em vez de ser escondida.
 
 ---
 
-## 6. CLI local
+## 8. Taxonomia de erro
 
-O script é:
-
-```text
-scripts/pilot_eval.py
-```
-
-### Importar vagas
-
-```bash
-uv run --package hirein-api python scripts/pilot_eval.py import
-```
-
-O script:
-
-1. lê `.local-data/jobs/*.json`;
-2. envia cada payload para `POST /api/v1/jobs`;
-3. grava o UUID retornado em `.local-data/evals/import-manifest.json`;
-4. não reinsere arquivos já mapeados no manifesto.
-
-O manifesto é local porque relaciona arquivos potencialmente reais a registros do banco do piloto.
-
-### Avaliar
-
-```bash
-uv run --package hirein-api python scripts/pilot_eval.py evaluate
-```
-
-O script:
-
-1. carrega as labels humanas;
-2. resolve cada arquivo pelo manifesto;
-3. consulta `GET /api/v1/jobs/{id}/match`;
-4. junta score e cobertura às labels;
-5. calcula as métricas;
-6. gera relatório JSON;
-7. gera relatório Markdown para leitura humana.
-
-### Executar as duas etapas
-
-```bash
-uv run --package hirein-api python scripts/pilot_eval.py run
-```
-
-A URL padrão da API é `http://localhost:8000` e pode ser substituída por `--api-base`.
-
----
-
-## 7. Reexecução e identidade
-
-O CLI não tenta adivinhar IDs existentes.
-
-Se a API retornar `409` para uma vaga que não possui entrada no manifesto, o processo para com erro explícito.
-
-Isso é intencional: associar silenciosamente um arquivo local ao registro errado contaminaria o benchmark.
-
----
-
-## 8. Métricas
-
-### Recall@K
-
-Responde:
-
-> Entre as vagas que eu realmente considero boas ou excelentes, quantas aparecem nas primeiras K posições do ranking?
-
-No piloto:
-
-```text
-relevante = human_relevance >= 3
-```
-
-### NDCG@K
-
-Responde:
-
-> O ranking coloca as vagas mais relevantes mais perto do topo, respeitando que uma vaga 4 é melhor que uma 3, que é melhor que uma 2?
-
-É a métrica principal quando a relevância humana é graduada.
-
-### Cobertura
-
-Também será acompanhada a cobertura média do Match.
-
-Um algoritmo pode parecer conservador porque retorna `INSUFFICIENT_DATA` frequentemente. O benchmark precisa mostrar isso separadamente da qualidade de ordenação.
-
----
-
-## 9. Taxonomia de erro para revisão manual
-
-Ao revisar resultados incorretos, classificar preferencialmente em uma destas causas:
+A interface permite classificar o erro dominante como:
 
 ```text
 MISSING_PROFILE_EVIDENCE
@@ -214,44 +191,96 @@ BAD_JOB_NORMALIZATION
 SIMPLE_ALIAS
 SEMANTIC_EQUIVALENCE
 PREFERENCE_RULE
-SALARY_RULE
-SENIORITY_RULE
 COVERAGE_FAILURE
 RANKING_WEIGHT
 OTHER
 ```
 
-A primeira versão do arquivo de labels mantém apenas `reason` livre para não criar estrutura prematura. A taxonomia acima serve para a análise das primeiras 30–50 vagas e poderá virar campo estruturado depois que os padrões reais aparecerem.
+Interpretação:
+
+- `MISSING_PROFILE_EVIDENCE`: o candidato possui a experiência, mas ela não está estruturada no perfil;
+- `BAD_JOB_NORMALIZATION`: a vaga foi cadastrada ou normalizada de forma inadequada;
+- `SIMPLE_ALIAS`: os dois lados usam nomes simples diferentes para o mesmo conceito;
+- `SEMANTIC_EQUIVALENCE`: a relação existe, mas exige entendimento de contexto;
+- `PREFERENCE_RULE`: modalidade, contrato, localização, senioridade ou salário foram tratados inadequadamente;
+- `COVERAGE_FAILURE`: o Match ficou sem dados suficientes para decidir;
+- `RANKING_WEIGHT`: os itens foram avaliados, mas os pesos produziram uma ordem ruim;
+- `OTHER`: falha relevante ainda não coberta pela taxonomia.
+
+A taxonomia é analítica. Registrar uma categoria não corrige automaticamente o algoritmo.
+
+---
+
+## 9. CLI local opcional
+
+O fluxo por arquivos continua disponível para importação em lote e relatórios locais:
+
+```bash
+uv run --package hirein-api python scripts/pilot_eval.py import
+uv run --package hirein-api python scripts/pilot_eval.py evaluate
+uv run --package hirein-api python scripts/pilot_eval.py run
+```
+
+O CLI trabalha com `.local-data/jobs/*.json`, manifesto local e labels locais. Ele é útil para datasets maiores, automações de análise e reprodutibilidade fora da interface.
+
+Para o uso cotidiano do piloto, `/jobs/review` é o fluxo preferencial.
 
 ---
 
 ## 10. Critério para adicionar tecnologia
 
-Não adicionar embeddings apenas porque há falsos gaps.
+Não adicionar embeddings apenas porque existem falsos gaps.
 
 Exemplos:
 
-- se a maioria dos erros for `SIMPLE_ALIAS`, criar aliases/taxonomia é mais simples e auditável;
-- se houver muita equivalência semântica real, benchmarkar embeddings pode fazer sentido;
-- se o problema for classificação de requisitos, avaliar extração/classificação assistida por modelo;
-- se o score estiver correto mas a explicação for ruim, melhorar apresentação antes do ranking;
-- se o perfil estiver incompleto, corrigir Candidate Core/dados antes do Match.
+- muitos `SIMPLE_ALIAS` → aliases/taxonomia podem ser suficientes;
+- muitos `SEMANTIC_EQUIVALENCE` → benchmark de embeddings passa a fazer sentido;
+- muitos `BAD_JOB_NORMALIZATION` → melhorar ingestão/classificação de requisitos primeiro;
+- muitos `MISSING_PROFILE_EVIDENCE` → melhorar Candidate Core antes do Match;
+- muitos `COVERAGE_FAILURE` → entender qual dado estruturado está ausente;
+- muitos `RANKING_WEIGHT` → recalibrar pesos com o dataset antes de usar modelo generativo.
 
-A Etapa F só começa quando o dataset indicar qual problema vale resolver.
+LLM só entra quando houver uma tarefa clara, eval correspondente e fallback determinístico.
 
 ---
 
-## 11. Critério de aceite
+## 11. Gate operacional
 
-A Etapa E é considerada pronta tecnicamente quando:
+### Smoke test
+
+Primeiro conjunto:
+
+```text
+5 vagas reais
+```
+
+Objetivo: confirmar que o fluxo de cadastro → Match → avaliação humana → relatório é confortável e confiável.
+
+### Dataset de decisão
+
+Depois:
+
+```text
+30–50 vagas reais
+```
+
+Nesse ponto devemos olhar distribuição das categorias de erro, Recall, NDCG e cobertura antes de escolher a próxima técnica.
+
+---
+
+## 12. Critério de aceite
+
+A etapa de eval está pronta tecnicamente quando:
 
 - dados reais continuam fora do Git;
-- vagas locais podem ser importadas de modo reproduzível;
-- labels humanas podem ser registradas sem depender do Match;
-- o Match de cada vaga pode ser coletado automaticamente;
+- avaliações podem ser registradas pela interface;
+- labels continuam independentes do score;
+- persistência sobrevive a reinicializações do app;
+- Match atual pode ser recalculado sobre labels antigas;
 - Recall@K e NDCG@K são calculados por código testado;
-- relatórios local JSON e Markdown são produzidos;
-- fixtures versionadas são exclusivamente sintéticas;
-- a baseline funciona sem embeddings e sem LLM.
+- cobertura insuficiente continua visível;
+- CLI local permanece disponível;
+- migrations são reproduzíveis;
+- baseline funciona sem embeddings e sem LLM.
 
-A validação de produto só termina depois que o piloto acumular aproximadamente 30–50 vagas reais rotuladas.
+A validação de produto termina apenas depois do dataset de aproximadamente 30–50 vagas reais rotuladas.

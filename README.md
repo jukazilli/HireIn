@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** baseline de avaliação do Match implementada; próximo gate de produto é acumular aproximadamente 30–50 vagas brasileiras reais rotuladas localmente.
+> **Fase atual:** baseline de avaliação do Match implementada com workspace visual; próximo gate de produto é acumular aproximadamente 30–50 vagas brasileiras reais avaliadas pelo piloto.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -150,10 +150,10 @@ Se menos de 60% do peso dos requisitos puder ser avaliado, o sistema retorna `IN
 
 ## Pilot Evaluation Dataset
 
-A Etapa E adiciona a baseline que mede o ranking do Match antes de qualquer IA:
+A Etapa E mede o ranking do Match antes de qualquer IA:
 
 ```text
-vagas reais locais
+vagas reais
       +
 labels humanas 0–4
       ↓
@@ -166,16 +166,35 @@ cobertura média
 classificação dos erros
 ```
 
-Os dados reais permanecem em `.local-data/`, fora do Git. O repositório guarda apenas código, documentação e fixtures sintéticas.
+O fluxo preferencial do piloto fica em:
 
-O fluxo local é:
+```text
+/jobs/review
+```
+
+A tela permite visualizar o Match da vaga e registrar uma avaliação humana independente com:
+
+- relevância de `0` a `4`;
+- blocker real;
+- motivo livre;
+- categoria opcional do erro dominante.
+
+As avaliações ficam persistidas no PostgreSQL local em `pilot_job_evaluations`. Elas não alteram o Match automaticamente e não são versionadas no Git.
+
+A API de avaliação é:
+
+```text
+GET /api/v1/evals/jobs
+PUT /api/v1/evals/jobs/{job_id}
+GET /api/v1/evals/report
+```
+
+O CLI local continua disponível para importação em lote e relatórios baseados em `.local-data/`:
 
 ```bash
 uv run --package hirein-api python scripts/pilot_eval.py import
 uv run --package hirein-api python scripts/pilot_eval.py evaluate
 ```
-
-O relatório é gerado localmente em JSON e Markdown. Vagas sem score por falta de cobertura ficam depois das vagas avaliadas no ranking, tornando o problema de evidência visível.
 
 ## Orçamento do piloto
 
@@ -192,8 +211,6 @@ O objetivo é pagar somente depois que um gargalo ou ganho de qualidade estiver 
 ## Gate de expansão
 
 O HireIn não será aberto a terceiros apenas porque o piloto funciona tecnicamente.
-
-A sequência definida é:
 
 ```text
 piloto individual
@@ -213,7 +230,7 @@ O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-O próximo trabalho é operacional, não uma nova camada de IA: acumular aproximadamente **30–50 vagas brasileiras reais**, rotular sua relevância humana e revisar os erros da baseline.
+O próximo trabalho é operacional, não uma nova camada de IA: acumular aproximadamente **30–50 vagas brasileiras reais**, registrar sua relevância humana e revisar os erros da baseline.
 
 O dataset deve revelar se os principais problemas são:
 
