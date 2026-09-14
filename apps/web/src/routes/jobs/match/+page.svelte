@@ -67,10 +67,10 @@
   let error = '';
 
   const bandLabel: Record<string, string> = {
-    STRONG: 'Forte',
-    GOOD: 'Boa',
-    PARTIAL: 'Parcial',
-    LOW: 'Baixa',
+    STRONG: 'Compatibilidade forte',
+    GOOD: 'Boa compatibilidade',
+    PARTIAL: 'Compatibilidade parcial',
+    LOW: 'Compatibilidade baixa',
     INSUFFICIENT_DATA: 'Dados insuficientes'
   };
 
@@ -108,7 +108,7 @@
       }
       result = await response.json();
     } catch (reason) {
-      error = reason instanceof Error ? reason.message : 'Não foi possível calcular o match.';
+      error = reason instanceof Error ? reason.message : 'Não foi possível calcular o Match.';
     } finally {
       calculating = false;
     }
@@ -119,234 +119,196 @@
 
 <svelte:head>
   <title>Match · HireIn</title>
-  <meta name="description" content="Match determinístico e explicável do piloto HireIn." />
+  <meta name="description" content="Compatibilidade explicável entre perfil e vagas no HireIn." />
 </svelte:head>
 
-<main>
-  <header>
-    <div>
-      <a class="back" href="/">← Perfil</a>
-      <p class="eyebrow">HireIn · Match v0</p>
-      <h1>Compatibilidade com evidência, não palpite.</h1>
-      <p class="lead">
-        O score usa apenas dados confirmados do perfil, mostra a cobertura real da análise e separa
-        gaps profissionais de conflitos de preferência.
+<main class="app-main">
+  <section class="page-intro">
+    <div class="page-intro-copy">
+      <p class="eyebrow">HireIn Match</p>
+      <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
+      <p class="page-lead">
+        Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
+        avaliar com segurança. O score vem depois das evidências, não antes.
       </p>
     </div>
-    <div class="guardrail">
-      <span>LLM</span><strong>desligado</strong>
-      <span>Embeddings</span><strong>desligados</strong>
-      <span>Blockers automáticos</span><strong>desligados</strong>
-    </div>
-  </header>
+    <aside class="context-note">
+      <strong>Match v0 determinístico.</strong>
+      Sem LLM e sem embeddings. Só informações confirmadas no seu perfil podem aumentar a compatibilidade.
+    </aside>
+  </section>
 
-  <section class="card">
-    <div class="section-title">
-      <div><p class="eyebrow">Dataset</p><h2>Escolha uma vaga</h2></div>
-      <span>{jobs.length} vaga{jobs.length === 1 ? '' : 's'}</span>
+  {#if error}<div class="status-notice error" aria-live="polite">{error}</div>{/if}
+
+  <section class="surface surface-padded">
+    <div class="section-head">
+      <div class="section-head-copy">
+        <p class="section-kicker">Escolha a oportunidade</p>
+        <h2 class="section-title">Qual vaga você quer entender?</h2>
+        <p class="section-description">O HireIn calcula uma vaga por vez para manter a leitura focada e auditável.</p>
+      </div>
+      <span class="section-meta">{jobs.length} vaga{jobs.length === 1 ? '' : 's'}</span>
     </div>
 
     {#if loading}
-      <p class="empty">Carregando…</p>
+      <div class="status-notice">Carregando vagas do piloto…</div>
     {:else if jobs.length === 0}
-      <p class="empty">Cadastre uma vaga no Job Core antes de calcular compatibilidade.</p>
+      <div class="empty-state">Cadastre uma vaga real antes de calcular compatibilidade.</div>
     {:else}
-      <div class="job-list">
+      <div class="opportunity-list job-picker">
         {#each jobs as job}
-          <article class:selected={selectedJob?.id === job.id}>
+          <button class="opportunity-card" class:selected={selectedJob?.id === job.id} type="button" disabled={calculating} onclick={() => calculate(job)}>
             <div>
-              <p class="company">{job.company_name}</p>
-              <h3>{job.title}</h3>
-              <p class="meta">
-                {job.location_text ?? 'Local não informado'} · {job.work_model ?? 'modalidade n/d'} ·
-                {job.contract_type ?? 'contrato n/d'}
-              </p>
+              <p class="opportunity-company">{job.company_name}</p>
+              <h3 class="opportunity-title">{job.title}</h3>
+              <p class="opportunity-meta">{job.location_text ?? 'Local não informado'} · {job.work_model ?? 'modalidade n/d'} · {job.contract_type ?? 'contrato n/d'}</p>
             </div>
-            <div class="job-side">
+            <div class="opportunity-side">
               <span>{job.requirement_count} requisitos</span>
-              <button type="button" disabled={calculating} onclick={() => calculate(job)}>
-                {calculating && selectedJob?.id === job.id ? 'Calculando…' : 'Calcular match'}
-              </button>
+              <strong class="match-link">{calculating && selectedJob?.id === job.id ? 'Analisando…' : 'Ver compatibilidade'}</strong>
             </div>
-          </article>
+          </button>
         {/each}
       </div>
     {/if}
   </section>
 
-  {#if error}
-    <section class="notice error" aria-live="polite">{error}</section>
-  {/if}
-
   {#if result && selectedJob}
-    <section class="card result-card">
-      <div class="result-head">
-        <div>
-          <p class="eyebrow">Resultado auditável</p>
-          <h2>{selectedJob.title}</h2>
-          <p>{selectedJob.company_name}</p>
+    <section class="result-space" aria-live="polite">
+      <div class="match-overview">
+        <div class="match-score-panel">
+          <div>
+            <p class="eyebrow">Leitura atual</p>
+            <span class="match-score-value">{result.score === null ? '—' : `${result.score}%`}</span>
+            <p class="match-score-label">{bandLabel[result.band] ?? result.band}</p>
+          </div>
+          <small>{result.score === null ? 'Sem precisão artificial' : 'Score explicável'}</small>
         </div>
-        <div class="score-block">
-          <strong>{result.score === null ? '—' : `${result.score}%`}</strong>
-          <span>{bandLabel[result.band] ?? result.band}</span>
-        </div>
-      </div>
+        <div class="match-summary-panel">
+          <p class="section-kicker">{selectedJob.company_name}</p>
+          <h2 class="selected-title">{selectedJob.title}</h2>
+          <p class="selected-meta">{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
 
-      <div class="metrics">
-        <div><span>Requisitos</span><strong>{result.requirement_score ?? '—'}{result.requirement_score === null ? '' : '%'}</strong></div>
-        <div><span>Preferências</span><strong>{result.preference_score ?? '—'}{result.preference_score === null ? '' : '%'}</strong></div>
-        <div><span>Cobertura</span><strong>{result.evaluation_coverage}%</strong></div>
-        <div><span>Obrigatórios atendidos</span><strong>{result.matched_required}</strong></div>
-      </div>
+          <div class="match-facts">
+            <div class="match-fact"><span>Cobertura da análise</span><strong>{result.evaluation_coverage}%</strong></div>
+            <div class="match-fact"><span>Requisitos atendidos</span><strong>{result.matched_required} obrigatórios</strong></div>
+            <div class="match-fact"><span>Gaps obrigatórios</span><strong>{result.missing_required}</strong></div>
+            <div class="match-fact"><span>Itens não avaliáveis</span><strong>{result.unknown_requirements}</strong></div>
+            <div class="match-fact"><span>Preferências</span><strong>{result.preference_score === null ? '—' : `${result.preference_score}%`}</strong></div>
+          </div>
 
-      {#if result.band === 'INSUFFICIENT_DATA'}
-        <div class="notice">
-          O HireIn não emitiu score porque menos de 60% do peso dos requisitos pôde ser avaliado com
-          segurança. Isso é falta de evidência estruturada, não reprovação.
-        </div>
-      {/if}
-    </section>
-
-    <section class="card">
-      <div class="section-title">
-        <div><p class="eyebrow">Evidências</p><h2>Requisitos da vaga</h2></div>
-        <span>{result.unknown_requirements} não avaliável{result.unknown_requirements === 1 ? '' : 'is'}</span>
-      </div>
-
-      <div class="result-list">
-        {#each result.requirement_results as item}
-          <article class="result-row">
-            <div class="row-top">
-              <div>
-                <span class="status" data-status={item.status}>{statusLabel[item.status]}</span>
-                <span class="kind">{item.importance} · {item.kind} · peso {item.weight}</span>
-              </div>
-              <strong>{item.value}</strong>
+          {#if result.band === 'INSUFFICIENT_DATA'}
+            <div class="status-notice warning insufficient-note">
+              Menos de 60% do peso relevante pôde ser avaliado. O HireIn prefere assumir que faltam dados a inventar um score preciso.
             </div>
-            <p>{item.reason}</p>
-            {#if item.evidence.length > 0}
-              <div class="evidence-list">
-                {#each item.evidence as evidence}
+          {/if}
+        </div>
+      </div>
+
+      <div class="result-columns">
+        <section class="surface surface-padded">
+          <div class="section-head">
+            <div class="section-head-copy">
+              <p class="section-kicker">Evidências</p>
+              <h2 class="section-title">O que sustentou esta leitura</h2>
+              <p class="section-description">Cada requisito mantém seu motivo e, quando existe, a evidência profissional usada pelo Match.</p>
+            </div>
+          </div>
+
+          <div class="match-evidence-list">
+            {#each result.requirement_results as item}
+              <article class="match-evidence">
+                <div class="match-evidence-head">
                   <div>
-                    <span>{evidence.entity_type}</span>
-                    <strong>{evidence.value}</strong>
-                    <small>{evidence.source_type}{evidence.detail ? ` · ${evidence.detail}` : ''}</small>
+                    <span class="status-chip" data-status={item.status}>{statusLabel[item.status]}</span>
+                    <h3 class="match-evidence-title">{item.value}</h3>
                   </div>
-                {/each}
+                  <span class="requirement-meta">{item.importance} · {item.kind} · peso {item.weight}</span>
+                </div>
+                <p class="match-evidence-reason">{item.reason}</p>
+                {#if item.evidence.length > 0}
+                  <div class="proof-list">
+                    {#each item.evidence as evidence}
+                      <div class="evidence-proof">
+                        <span>{evidence.entity_type}</span>
+                        <strong>{evidence.value}</strong>
+                        <small>{evidence.source_type}{evidence.detail ? ` · ${evidence.detail}` : ''}</small>
+                      </div>
+                    {/each}
+                  </div>
+                {/if}
+              </article>
+            {/each}
+          </div>
+        </section>
+
+        <aside class="surface surface-padded preferences-panel">
+          <div class="section-head">
+            <div class="section-head-copy">
+              <p class="section-kicker">Preferências</p>
+              <h2 class="section-title">O que combina com seu momento</h2>
+              <p class="section-description">Conflito de preferência não é blocker automático no v0.</p>
+            </div>
+          </div>
+          <div class="preference-list">
+            {#each result.preference_results as item}
+              <article class="preference-item">
+                <div class="preference-head">
+                  <strong>{item.aspect}</strong>
+                  <span class="status-chip" data-status={item.status}>{statusLabel[item.status]}</span>
+                </div>
+                <p>{item.reason}</p>
+                <small>Você: {item.candidate_value.join(', ') || 'n/d'}<br />Vaga: {item.job_value.join(', ') || 'n/d'}</small>
+              </article>
+            {/each}
+          </div>
+
+          <div class="interpretation">
+            <strong>Como ler este resultado</strong>
+            <p>Compatibilidade não é probabilidade de entrevista ou contratação. O score organiza evidências; a decisão sobre a vaga continua sendo sua.</p>
+            {#if result.warnings.length > 0}
+              <div class="warning-list">
+                {#each result.warnings as warning}<span>{warning}</span>{/each}
               </div>
             {/if}
-          </article>
-        {/each}
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="section-title">
-        <div><p class="eyebrow">Preferências</p><h2>Alinhamento pessoal</h2></div>
-        <span>não gera blocker no v0</span>
-      </div>
-      <div class="preference-grid">
-        {#each result.preference_results as item}
-          <article>
-            <div class="row-top">
-              <span class="status" data-status={item.status}>{statusLabel[item.status]}</span>
-              <strong>{item.aspect}</strong>
-            </div>
-            <p>{item.reason}</p>
-            <small>
-              Você: {item.candidate_value.join(', ') || 'n/d'} · Vaga: {item.job_value.join(', ') || 'n/d'}
-            </small>
-          </article>
-        {/each}
-      </div>
-    </section>
-
-    <section class="warning-card">
-      <strong>Como interpretar este resultado</strong>
-      <p>
-        O score mede apenas compatibilidade segundo as regras determinísticas desta versão. Ele não é
-        probabilidade de entrevista ou contratação e não substitui sua decisão sobre a vaga.
-      </p>
-      <div class="warning-tags">
-        {#each result.warnings as warning}<span>{warning}</span>{/each}
+          </div>
+          <a class="btn btn-accent review-cta" href="/jobs/review">Dar minha avaliação desta vaga</a>
+        </aside>
       </div>
     </section>
   {/if}
 </main>
 
 <style>
-  :global(*) { box-sizing: border-box; }
-  :global(body) {
-    margin: 0;
-    min-width: 320px;
-    background: #f7f7fa;
-    color: #18181f;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  .job-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .match-link { color: var(--brand-600); font-size: .78rem; font-weight: 700; }
+  .result-space { display: grid; gap: 1rem; margin-top: 1rem; }
+  .selected-title { margin: .18rem 0 .35rem; font-size: clamp(1.6rem, 3vw, 2.3rem); }
+  .selected-meta { margin: 0; color: var(--text-muted); font-size: .84rem; }
+  .match-score-panel small { color: var(--brand-200); font-size: .74rem; }
+  .insufficient-note { margin-top: 1rem; }
+  .result-columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr); gap: 1rem; align-items: start; }
+  .requirement-meta { color: var(--text-muted); font-size: .7rem; white-space: nowrap; }
+  .proof-list { display: grid; gap: .55rem; }
+  .preferences-panel { position: sticky; top: calc(var(--nav-height) + 1rem); }
+  .preference-list { display: grid; gap: 0; }
+  .preference-item { padding: .9rem 0; border-top: 1px solid var(--border); }
+  .preference-item:first-child { border-top: 0; padding-top: 0; }
+  .preference-head { display: flex; justify-content: space-between; gap: .8rem; align-items: center; }
+  .preference-item p { margin: .45rem 0; color: var(--text-secondary); font-size: .82rem; line-height: 1.5; }
+  .preference-item small { color: var(--text-muted); font-size: .72rem; }
+  .interpretation { margin-top: 1.2rem; padding: 1rem 0 0; border-top: 1px solid var(--border); }
+  .interpretation p { margin: .4rem 0 0; color: var(--text-muted); font-size: .8rem; line-height: 1.5; }
+  .warning-list { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .65rem; }
+  .warning-list span { padding: .25rem .45rem; border-radius: 7px; background: var(--warning-soft); color: #75500f; font-size: .68rem; }
+  .review-cta { width: 100%; margin-top: 1rem; }
+  @media (max-width: 900px) {
+    .job-picker { grid-template-columns: 1fr; }
+    .result-columns { grid-template-columns: 1fr; }
+    .preferences-panel { position: static; }
   }
-  main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 3rem 0 5rem; }
-  header { display: flex; justify-content: space-between; gap: 2rem; align-items: flex-end; margin-bottom: 2rem; }
-  h1 { max-width: 790px; margin: .35rem 0 .8rem; font-size: clamp(2.25rem, 5vw, 4.2rem); line-height: 1; letter-spacing: -.055em; }
-  h2, h3, p { margin-top: 0; }
-  .lead { max-width: 730px; color: #5e5c69; line-height: 1.6; }
-  .eyebrow { margin: 0; color: #6a6877; font-size: .76rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
-  .back { display: inline-block; margin-bottom: 1.5rem; color: #555361; text-decoration: none; }
-  .guardrail { min-width: 230px; display: grid; grid-template-columns: 1fr auto; gap: .65rem 1rem; padding: 1rem 1.1rem; border: 1px solid #e4e3e9; border-radius: 16px; background: white; font-size: .82rem; }
-  .guardrail strong { font-weight: 750; }
-  .card { margin-top: 1rem; padding: clamp(1.3rem, 3vw, 2rem); border: 1px solid #e6e5eb; border-radius: 22px; background: white; }
-  .section-title, .result-head, .row-top { display: flex; justify-content: space-between; gap: 1rem; align-items: center; }
-  .section-title { margin-bottom: 1.3rem; }
-  .section-title h2 { margin: .25rem 0 0; }
-  .section-title > span { color: #6a6874; font-size: .86rem; }
-  .job-list, .result-list { display: grid; gap: .7rem; }
-  .job-list article { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 1rem 1.1rem; border: 1px solid #ecebf0; border-radius: 16px; }
-  .job-list article.selected { border-color: #b9b7c3; background: #fafafd; }
-  .company { margin: 0 0 .2rem; color: #6a6874; font-size: .82rem; }
-  .job-list h3 { margin: 0 0 .35rem; }
-  .meta { margin: 0; color: #777480; font-size: .86rem; }
-  .job-side { display: grid; justify-items: end; gap: .55rem; color: #6a6874; font-size: .8rem; }
-  button { border: 0; border-radius: 11px; padding: .7rem .9rem; background: #1f1e24; color: white; font-weight: 720; cursor: pointer; }
-  button:disabled { opacity: .55; cursor: wait; }
-  .result-head { align-items: flex-start; }
-  .result-head h2 { margin: .25rem 0 .25rem; }
-  .result-head p:last-child { color: #6a6874; }
-  .score-block { min-width: 150px; display: grid; justify-items: end; }
-  .score-block strong { font-size: clamp(2.8rem, 7vw, 5rem); letter-spacing: -.07em; line-height: .95; }
-  .score-block span { margin-top: .45rem; color: #66636f; font-weight: 700; }
-  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; margin-top: 1.5rem; }
-  .metrics div { display: grid; gap: .35rem; padding: 1rem; border: 1px solid #ecebf0; border-radius: 14px; }
-  .metrics span { color: #777480; font-size: .78rem; }
-  .metrics strong { font-size: 1.4rem; }
-  .notice { margin-top: 1rem; padding: 1rem; border: 1px solid #e4e2c8; border-radius: 14px; background: #fffef3; color: #5b5739; line-height: 1.5; }
-  .notice.error { width: min(1120px, calc(100% - 2rem)); margin: 1rem auto; border-color: #edd7d7; background: #fff8f8; color: #8a3c3c; }
-  .result-row { padding: 1rem 0; border-top: 1px solid #efedf2; }
-  .result-row:first-child { border-top: 0; }
-  .result-row p, .preference-grid p { margin: .65rem 0 0; color: #66636f; line-height: 1.5; font-size: .9rem; }
-  .row-top > div { display: flex; align-items: center; gap: .6rem; }
-  .status { display: inline-flex; padding: .3rem .55rem; border-radius: 999px; background: #f0eff3; color: #56535e; font-size: .72rem; font-weight: 780; }
-  .status[data-status='MATCHED'], .status[data-status='ALIGNED'] { background: #f0f7f1; color: #45614b; }
-  .status[data-status='GAP'], .status[data-status='CONFLICT'] { background: #fff4f2; color: #844e46; }
-  .status[data-status='UNKNOWN'] { background: #f6f4ef; color: #6c6455; }
-  .kind { color: #85818c; font-size: .75rem; }
-  .evidence-list { display: grid; gap: .45rem; margin-top: .8rem; }
-  .evidence-list div { display: grid; grid-template-columns: 90px 1fr auto; gap: .7rem; align-items: center; padding: .65rem .75rem; border-radius: 10px; background: #f8f8fa; font-size: .82rem; }
-  .evidence-list span, .evidence-list small { color: #777480; }
-  .preference-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
-  .preference-grid article { padding: 1rem; border: 1px solid #ecebf0; border-radius: 14px; }
-  .preference-grid small { display: block; margin-top: .65rem; color: #85818c; line-height: 1.45; }
-  .warning-card { margin-top: 1rem; padding: 1.3rem; border: 1px dashed #d8d6de; border-radius: 18px; color: #55525f; }
-  .warning-card p { margin: .5rem 0 1rem; max-width: 820px; line-height: 1.55; }
-  .warning-tags { display: flex; gap: .45rem; flex-wrap: wrap; }
-  .warning-tags span { padding: .3rem .55rem; border-radius: 999px; background: #ecebf0; font: 650 .72rem ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .empty { color: #777480; }
-  @media (max-width: 800px) {
-    header { display: grid; align-items: start; }
-    .guardrail { width: 100%; }
-    .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .preference-grid { grid-template-columns: 1fr; }
-    .job-list article, .result-head { align-items: flex-start; }
-    .job-list article { display: grid; }
-    .job-side { justify-items: start; }
-    .score-block { justify-items: start; }
-    .evidence-list div { grid-template-columns: 1fr; gap: .2rem; }
+  @media (max-width: 640px) {
+    .opportunity-card { flex-direction: column; }
+    .requirement-meta { white-space: normal; }
   }
 </style>
