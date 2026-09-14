@@ -1,6 +1,10 @@
 <script lang="ts">
   import '../app.css';
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import { isVisualPreview } from '$lib/demo-api';
+
+  let visualPreview = false;
 
   const items = [
     { href: '/pilot', label: 'Piloto', icon: 'pilot' },
@@ -16,10 +20,21 @@
     if (href === '/jobs') return path === '/jobs';
     return path.startsWith(href);
   };
+
+  onMount(() => {
+    visualPreview = isVisualPreview();
+  });
 </script>
 
 <div class="app-shell">
-  <header class="app-bar">
+  {#if visualPreview}
+    <div class="preview-banner" role="status">
+      <span>Preview visual</span>
+      <p>Dados sintéticos · alterações ficam somente neste navegador</p>
+    </div>
+  {/if}
+
+  <header class="app-bar" class:with-preview={visualPreview}>
     <a class="brand" href="/pilot" aria-label="HireIn — abrir piloto">
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><b></b></span>
       <span class="brand-word">Hire<span>In</span></span>
@@ -62,6 +77,22 @@
 
 <style>
   .app-shell { min-height: 100vh; }
+  .preview-banner {
+    position: sticky;
+    top: 0;
+    z-index: 70;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: .6rem;
+    min-height: 28px;
+    padding: .25rem .8rem;
+    background: var(--lime-100);
+    color: #405b0a;
+    font-size: .68rem;
+  }
+  .preview-banner span { font-weight: 760; text-transform: uppercase; letter-spacing: .07em; }
+  .preview-banner p { margin: 0; }
   .app-bar {
     position: sticky;
     top: 0;
@@ -75,6 +106,7 @@
     background: rgb(250 250 251 / 94%);
     backdrop-filter: blur(16px);
   }
+  .app-bar.with-preview { top: 28px; }
   .brand { display: inline-flex; align-items: center; gap: .55rem; color: var(--text-primary); text-decoration: none; }
   .brand-word { font-family: var(--font-display); font-size: 1.28rem; font-weight: 720; letter-spacing: -.045em; }
   .brand-word span { color: var(--brand-500); }
@@ -98,6 +130,9 @@
   svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
   @media (max-width: 760px) {
+    .preview-banner { justify-content: flex-start; min-height: 30px; overflow: hidden; white-space: nowrap; }
+    .preview-banner p { overflow: hidden; text-overflow: ellipsis; }
+    .app-bar.with-preview { top: 30px; }
     .app-bar { min-height: var(--nav-height); grid-template-columns: 1fr auto; padding: 0 .9rem; }
     .desktop-nav { display: none; }
     .brand small { display: none; }
