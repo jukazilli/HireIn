@@ -4,7 +4,7 @@
 
 A proposta é ajudar o candidato a encontrar vagas relevantes, entender sua compatibilidade, preparar candidaturas melhores e reduzir o trabalho repetitivo de processos seletivos.
 
-> **Fase atual:** Candidate Core implementado e em validação; próximo domínio após o gate é o Job Core.
+> **Fase atual:** Job Core implementado e em validação; próximo domínio após o gate é o HireIn Match v0.
 
 O projeto começa pequeno: um único usuário, custo recorrente próximo de zero e revisão humana das candidaturas. A expansão para terceiros somente deverá acontecer após validação real do produto e tratamento formal de privacidade, segurança e LGPD.
 
@@ -33,7 +33,8 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 9. [Plano da primeira implementação](docs/09-IMPLEMENTATION-PLAN.md)
 10. [Bootstrap técnico](docs/10-BOOTSTRAP.md)
 11. [Candidate Core](docs/11-CANDIDATE-CORE.md)
-12. [Architecture Decision Records](docs/adr/README.md)
+12. [Job Core](docs/12-JOB-CORE.md)
+13. [Architecture Decision Records](docs/adr/README.md)
 
 O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
@@ -71,7 +72,7 @@ A Etapa A possui uma baseline executável com:
 
 ## Candidate Core
 
-A Etapa B introduz a primeira fonte de verdade profissional do HireIn.
+A Etapa B criou a fonte de verdade profissional do piloto:
 
 ```text
 CandidateProfile
@@ -88,14 +89,32 @@ CandidateProfile
 
 Fatos carregam proveniência (`USER_CONFIRMED`, `RESUME_EXTRACTED`, `AI_DRAFT` etc.) para impedir que inferências futuras sejam tratadas como verdades sem confirmação humana.
 
-No piloto existe um único perfil primário e a edição ocorre por:
+No piloto existe um único perfil primário e a edição ocorre por `GET/PUT /api/v1/profile`.
+
+## Job Core
+
+A Etapa C cria a fonte de verdade das oportunidades:
 
 ```text
-GET /api/v1/profile
-PUT /api/v1/profile
+vaga bruta
+   ↓
+JobPosting
+   ↓
+JobRequirements
 ```
 
-A interface atual é manual e deixa IA e Auto Apply desligados.
+A descrição original é preservada e requisitos são estruturados por tipo e importância. A deduplicação usa fingerprint determinístico priorizando `plataforma + external_id`, depois URL e, por último, empresa + cargo + localização.
+
+No piloto a ingestão continua manual:
+
+```text
+GET  /api/v1/jobs
+POST /api/v1/jobs
+GET  /api/v1/jobs/{id}
+PUT  /api/v1/jobs/{id}
+```
+
+A interface de validação fica em `/jobs`. Parsing por IA, scraping e Auto Apply continuam desligados.
 
 ## Orçamento do piloto
 
@@ -133,21 +152,23 @@ O checklist completo está em `docs/07-PRIVACY-SECURITY-LGPD.md`.
 
 ## Próximo marco
 
-Após o Candidate Core passar pelo gate técnico, entra o **Job Core**:
+Depois do gate do Job Core começa o **HireIn Match v0**:
 
 ```text
-vaga bruta
-     ↓
-normalização
-     ↓
-requisitos estruturados
-     ↓
-blockers e preferências
-     ↓
-base para HireIn Match
+Candidate Core
+      +
+Job Core
+      ↓
+blockers
+      ↓
+compatibilidades
+      ↓
+gaps
+      ↓
+score explicável
 ```
 
-O primeiro Job Core também deverá funcionar sem LLM como dependência obrigatória. IA só entra quando houver tarefa, dataset e avaliação que justifiquem seu uso.
+O primeiro Match deve funcionar majoritariamente com regras determinísticas. Embeddings ou LLMs só entram quando os casos ambíguos estiverem medidos e houver dataset PT-BR para avaliar ganho real.
 
 A ordem detalhada e os critérios de aceite permanecem em `docs/09-IMPLEMENTATION-PLAN.md`.
 
