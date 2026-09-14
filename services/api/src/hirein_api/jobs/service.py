@@ -75,6 +75,7 @@ async def create_job_posting(
     await session.flush()
     await _apply_payload(session, job, payload, fingerprint)
     await session.commit()
+    session.expire_all()
 
     stored = await get_job(session, job.id)
     if stored is None:
@@ -99,6 +100,7 @@ async def update_job_posting(
     await clear_requirements(session, job.id)
     await _apply_payload(session, job, payload, fingerprint)
     await session.commit()
+    session.expire_all()
 
     stored = await get_job(session, job.id)
     if stored is None:
