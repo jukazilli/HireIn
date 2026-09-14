@@ -26,9 +26,8 @@ apps/web/.svelte-kit/
 apps/web/build/
 apps/web/.vite/
 
-# Generated API artifacts
+# Generated API source artifact
 packages/generated-client/openapi.json
-packages/generated-client/src/schema.d.ts
 
 # Browser/session artifacts
 .playwright/

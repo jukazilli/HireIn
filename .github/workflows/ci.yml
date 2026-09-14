@@ -88,5 +88,5 @@ jobs:
         run: uv run --package hirein-api python scripts/export_openapi.py
       - name: Generate TypeScript contract
         run: pnpm generate:api-types
-      - name: Verify generated contract
-        run: test -s packages/generated-client/src/schema.d.ts
+      - name: Verify generated contract is committed
+        run: git diff --exit-code -- packages/generated-client/src/schema.d.ts

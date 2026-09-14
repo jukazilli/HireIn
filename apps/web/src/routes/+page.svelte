@@ -1,7 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-
-  const API = 'http://localhost:8000/api/v1/profile';
+  import {
+    api,
+    type CandidateProfileUpsert,
+    type ContractType,
+    type EducationStatus,
+    type LanguageProficiency,
+    type Seniority,
+    type WorkModel
+  } from '$lib/api';
 
   type Experience = {
     company_name: string;
@@ -16,14 +23,14 @@
   type Education = {
     institution: string;
     course: string;
-    status: 'IN_PROGRESS' | 'COMPLETED' | 'PAUSED' | 'DROPPED';
+    status: EducationStatus;
     start_date: string;
     end_date: string;
   };
 
   type Language = {
     name: string;
-    proficiency: 'BASIC' | 'INTERMEDIATE' | 'ADVANCED' | 'FLUENT' | 'NATIVE';
+    proficiency: LanguageProficiency;
   };
 
   type Certification = {
@@ -45,7 +52,7 @@
     full_name: '', headline: '', email: '', phone: '', city: '', state: '',
     professional_summary: '', linkedin_url: '', github_url: '', portfolio_url: '',
     desired_titles: '', desired_areas: '', target_locations: '',
-    seniority: '', work_models: [] as string[], contract_types: [] as string[],
+    seniority: '' as Seniority | '', work_models: [] as WorkModel[], contract_types: [] as ContractType[],
     salary_min: '', salary_max: '', willing_to_travel: false, willing_to_relocate: false,
     skills: '', facts: '', experiences: [] as Experience[], education: [] as Education[],
     languages: [] as Language[], certifications: [] as Certification[]
@@ -71,8 +78,19 @@
 
   const list = (value: string) => value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
   const optional = (value: string) => value.trim() || null;
-  const toggle = (items: string[], value: string) =>
+  const toggle = <T extends string>(items: T[], value: T) =>
     items.includes(value) ? items.filter((item) => item !== value) : [...items, value];
+  const provenance = () => ({ source_type: 'USER_CONFIRMED' as const, confidence: 1 });
+  const workModelOptions: { value: WorkModel; label: string }[] = [
+    { value: 'REMOTE', label: 'Remoto' },
+    { value: 'HYBRID', label: 'Híbrido' },
+    { value: 'ONSITE', label: 'Presencial' }
+  ];
+  const contractOptions: { value: ContractType; label: string }[] = [
+    { value: 'CLT', label: 'CLT' },
+    { value: 'PJ', label: 'PJ' },
+    { value: 'INTERNSHIP', label: 'Estágio' }
+  ];
 
   function addExperience() { form.experiences = [...form.experiences, newExperience()]; }
   function addEducation() { form.education = [...form.education, newEducation()]; }
@@ -81,10 +99,8 @@
 
   async function load() {
     try {
-      const response = await fetch(API);
-      if (response.status === 404) return;
-      if (!response.ok) throw new Error(`Falha ao carregar (${response.status}).`);
-      const data = await response.json();
+      const data = await api.getProfile();
+      if (!data) return;
       form.full_name = data.full_name;
       form.headline = data.headline ?? '';
       form.email = data.email ?? '';
@@ -105,19 +121,19 @@
       form.salary_max = data.preferences.salary_max?.toString() ?? '';
       form.willing_to_travel = data.preferences.willing_to_travel;
       form.willing_to_relocate = data.preferences.willing_to_relocate;
-      form.skills = data.skills.map((item: { name: string }) => item.name).join(', ');
-      form.facts = data.facts.map((item: { value: string }) => item.value).join('\n');
-      form.experiences = data.experiences.map((item: any) => ({
+      form.skills = data.skills.map((item) => item.name).join(', ');
+      form.facts = data.facts.map((item) => item.value).join('\n');
+      form.experiences = data.experiences.map((item) => ({
         company_name: item.company_name, role_title: item.role_title,
         start_date: item.start_date, end_date: item.end_date ?? '', is_current: item.is_current,
-        description: item.description ?? '', facts: item.facts.map((fact: any) => fact.value).join('\n')
+        description: item.description ?? '', facts: item.facts.map((fact) => fact.value).join('\n')
       }));
-      form.education = data.education.map((item: any) => ({
+      form.education = data.education.map((item) => ({
         institution: item.institution, course: item.course, status: item.status,
         start_date: item.start_date ?? '', end_date: item.end_date ?? ''
       }));
-      form.languages = data.languages.map((item: any) => ({ name: item.name, proficiency: item.proficiency }));
-      form.certifications = data.certifications.map((item: any) => ({ name: item.name, issuer: item.issuer ?? '' }));
+      form.languages = data.languages.map((item) => ({ name: item.name, proficiency: item.proficiency }));
+      form.certifications = data.certifications.map((item) => ({ name: item.name, issuer: item.issuer ?? '' }));
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível carregar o perfil.';
     } finally {
@@ -125,7 +141,7 @@
     }
   }
 
-  function payload() {
+  function payload(): CandidateProfileUpsert {
     return {
       full_name: form.full_name,
       headline: optional(form.headline), email: optional(form.email), phone: optional(form.phone),
@@ -144,29 +160,28 @@
         willing_to_relocate: form.willing_to_relocate
       },
       experiences: form.experiences.map((item) => ({
+        ...provenance(),
         company_name: item.company_name, role_title: item.role_title, start_date: item.start_date,
         end_date: item.is_current ? null : optional(item.end_date), is_current: item.is_current,
         description: optional(item.description),
-        facts: list(item.facts).map((value) => ({ kind: 'RESPONSIBILITY', value }))
+        facts: list(item.facts).map((value) => ({ ...provenance(), kind: 'RESPONSIBILITY', value }))
       })),
       education: form.education.map((item) => ({
+        ...provenance(),
         institution: item.institution, course: item.course, status: item.status,
         start_date: optional(item.start_date), end_date: optional(item.end_date)
       })),
-      skills: list(form.skills).map((name) => ({ name })),
-      facts: list(form.facts).map((value) => ({ kind: 'OTHER', value })),
-      languages: form.languages.map((item) => ({ name: item.name, proficiency: item.proficiency })),
-      certifications: form.certifications.map((item) => ({ name: item.name, issuer: optional(item.issuer) }))
+      skills: list(form.skills).map((name) => ({ ...provenance(), name })),
+      facts: list(form.facts).map((value) => ({ ...provenance(), kind: 'OTHER', value })),
+      languages: form.languages.map((item) => ({ ...provenance(), name: item.name, proficiency: item.proficiency })),
+      certifications: form.certifications.map((item) => ({ ...provenance(), name: item.name, issuer: optional(item.issuer) }))
     };
   }
 
   async function save(event: SubmitEvent) {
     event.preventDefault(); saving = true; message = ''; error = '';
     try {
-      const response = await fetch(API, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload())
-      });
-      if (!response.ok) throw new Error(`Não foi possível salvar (${response.status}). ${await response.text()}`);
+      await api.upsertProfile(payload());
       message = 'Perfil salvo. Estas informações estão confirmadas por você.';
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível salvar.';
@@ -261,7 +276,7 @@
           <div class="preference-block">
             <span>Modelo de trabalho</span>
             <div class="choice-row">
-              {#each [{value:'REMOTE',label:'Remoto'},{value:'HYBRID',label:'Híbrido'},{value:'ONSITE',label:'Presencial'}] as option}
+              {#each workModelOptions as option}
                 <label class="choice"><input type="checkbox" checked={form.work_models.includes(option.value)} onchange={() => form.work_models = toggle(form.work_models, option.value)} />{option.label}</label>
               {/each}
             </div>
@@ -269,8 +284,8 @@
           <div class="preference-block">
             <span>Tipo de contratação</span>
             <div class="choice-row">
-              {#each ['CLT','PJ','INTERNSHIP'] as contract}
-                <label class="choice"><input type="checkbox" checked={form.contract_types.includes(contract)} onchange={() => form.contract_types = toggle(form.contract_types, contract)} />{contract === 'INTERNSHIP' ? 'Estágio' : contract}</label>
+              {#each contractOptions as option}
+                <label class="choice"><input type="checkbox" checked={form.contract_types.includes(option.value)} onchange={() => form.contract_types = toggle(form.contract_types, option.value)} />{option.label}</label>
               {/each}
             </div>
           </div>

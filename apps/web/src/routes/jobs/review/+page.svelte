@@ -1,52 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-
-  const API = 'http://localhost:8000/api/v1';
-
-  type Evaluation = {
-    job_id: string;
-    relevance: number;
-    blocker_real: boolean;
-    reason: string | null;
-    error_category: string | null;
-  };
-
-  type ReviewJob = {
-    job_id: string;
-    company_name: string;
-    title: string;
-    location_text: string | null;
-    work_model: string | null;
-    contract_type: string | null;
-    seniority: string | null;
-    requirement_count: number;
-    evaluation: Evaluation | null;
-  };
-
-  type MatchResult = {
-    score: number | null;
-    band: string;
-    requirement_score: number | null;
-    preference_score: number | null;
-    evaluation_coverage: number;
-    matched_required: number;
-    missing_required: number;
-    unknown_requirements: number;
-    warnings: string[];
-  };
-
-  type Report = {
-    metrics: {
-      sample_count: number;
-      relevant_count: number;
-      scored_count: number;
-      average_coverage: number;
-      recall_at_5: number;
-      recall_at_10: number;
-      ndcg_at_5: number;
-      ndcg_at_10: number;
-    };
-  };
+  import {
+    api,
+    type EvaluationErrorCategory,
+    type JobMatch,
+    type PilotEvalReport,
+    type PilotEvaluationUpsert,
+    type PilotReviewJob
+  } from '$lib/api';
 
   const ratingLabels = ['Irrelevante', 'Fraca', 'Razoável', 'Boa', 'Excelente'];
   const ratingShort = ['Não', 'Pouco', 'Talvez', 'Sim', 'Muito'];
@@ -57,22 +18,18 @@
     SEMANTIC_EQUIVALENCE: 'Equivalência semântica',
     PREFERENCE_RULE: 'Regra de preferência',
     COVERAGE_FAILURE: 'Cobertura insuficiente',
-    RANKING_WEIGHT: 'Peso / ranking',
-    OTHER: 'Outro'
+    RANKING_WEIGHT: 'Peso / ranking', OTHER: 'Outro'
   };
 
   const bandLabels: Record<string, string> = {
-    STRONG: 'Forte',
-    GOOD: 'Boa',
-    PARTIAL: 'Parcial',
-    LOW: 'Baixa',
+    STRONG: 'Forte', GOOD: 'Boa', PARTIAL: 'Parcial', LOW: 'Baixa',
     INSUFFICIENT_DATA: 'Dados insuficientes'
   };
 
-  let jobs: ReviewJob[] = [];
-  let selectedJob: ReviewJob | null = null;
-  let match: MatchResult | null = null;
-  let report: Report | null = null;
+  let jobs: PilotReviewJob[] = [];
+  let selectedJob: PilotReviewJob | null = null;
+  let match: JobMatch | null = null;
+  let report: PilotEvalReport | null = null;
   let loading = true;
   let loadingMatch = false;
   let saving = false;
@@ -82,32 +39,19 @@
   let relevance: number | null = null;
   let blockerReal = false;
   let reason = '';
-  let errorCategory = '';
+  let errorCategory: EvaluationErrorCategory | '' = '';
 
   $: reviewedCount = jobs.filter((job) => job.evaluation).length;
 
-  function fillEvaluation(job: ReviewJob) {
+  function fillEvaluation(job: PilotReviewJob) {
     relevance = job.evaluation?.relevance ?? null;
     blockerReal = job.evaluation?.blocker_real ?? false;
     reason = job.evaluation?.reason ?? '';
     errorCategory = job.evaluation?.error_category ?? '';
   }
 
-  async function loadJobs() {
-    const response = await fetch(`${API}/evals/jobs`);
-    if (!response.ok) throw new Error(`Falha ao carregar vagas (${response.status}).`);
-    jobs = await response.json();
-  }
-
-  async function loadReport() {
-    const response = await fetch(`${API}/evals/report`);
-    if (response.status === 404) {
-      report = null;
-      return;
-    }
-    if (!response.ok) throw new Error(`Falha ao carregar relatório (${response.status}).`);
-    report = await response.json();
-  }
+  async function loadJobs() { jobs = await api.listReviewJobs(); }
+  async function loadReport() { report = await api.getEvalReport(); }
 
   async function refresh() {
     error = '';
@@ -122,20 +66,10 @@
     }
   }
 
-  async function selectJob(job: ReviewJob) {
-    selectedJob = job;
-    fillEvaluation(job);
-    match = null;
-    error = '';
-    message = '';
-    loadingMatch = true;
+  async function selectJob(job: PilotReviewJob) {
+    selectedJob = job; fillEvaluation(job); match = null; error = ''; message = ''; loadingMatch = true;
     try {
-      const response = await fetch(`${API}/jobs/${job.job_id}/match`);
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail ?? `Falha ao calcular Match (${response.status}).`);
-      }
-      match = await response.json();
+      match = await api.getJobMatch(job.job_id);
     } catch (reasonValue) {
       error = reasonValue instanceof Error ? reasonValue.message : 'Não foi possível calcular o Match.';
     } finally {
@@ -145,25 +79,15 @@
 
   async function saveEvaluation() {
     if (!selectedJob || relevance === null) return;
-    saving = true;
-    error = '';
-    message = '';
+    saving = true; error = ''; message = '';
     try {
-      const response = await fetch(`${API}/evals/jobs/${selectedJob.job_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          relevance,
-          blocker_real: blockerReal,
-          reason: reason.trim() || null,
-          error_category: errorCategory || null
-        })
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.detail ?? `Falha ao salvar (${response.status}).`);
-      }
-      const saved: Evaluation = await response.json();
+      const payload: PilotEvaluationUpsert = {
+        relevance,
+        blocker_real: blockerReal,
+        reason: reason.trim() || null,
+        error_category: errorCategory || null
+      };
+      const saved = await api.upsertEvaluation(selectedJob.job_id, payload);
       jobs = jobs.map((job) =>
         job.job_id === selectedJob?.job_id ? { ...job, evaluation: saved } : job
       );
