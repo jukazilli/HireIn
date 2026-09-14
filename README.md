@@ -18,7 +18,19 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 - tecnologia escolhida por adequação técnica, não por popularidade ou facilidade de codificação;
 - evitar dependência de estratégias de evasão de mecanismos anti-bot;
 - infraestrutura local-first durante o piloto;
-- preparar escala somente depois de provar valor.
+- preparar escala somente depois de provar valor;
+- UI orientada à tarefa, não a templates genéricos de SaaS;
+- identidade visual reconhecível mesmo sem o logo.
+
+## Direção visual
+
+A direção aprovada é **Conectado e Dinâmico**: superfícies claras, índigo `#6366F1` como assinatura, lime `#A3E635` como acento controlado, Satoshi para display e General Sans para corpo/UI.
+
+Tinder é referência de **comportamento de descoberta** — foco em uma oportunidade por vez, decisões rápidas e swipe opcional — e não uma referência para copiar estética ou linguagem de namoro.
+
+`docs/16-VISUAL-DIRECTION.md` é normativa para qualquer alteração de frontend, UI, UX, copy, motion, iconografia ou imagery. Seu objetivo central é impedir que o HireIn vire uma UI genérica produzida a partir de padrões recorrentes de geradores de interface.
+
+Uma tela que compila, mas poderia pertencer a qualquer SaaS, não está pronta.
 
 ## Documentação
 
@@ -36,7 +48,9 @@ O projeto começa pequeno: um único usuário, custo recorrente próximo de zero
 12. [Job Core](docs/12-JOB-CORE.md)
 13. [HireIn Match v0](docs/13-MATCH-V0.md)
 14. [Pilot Evaluation Dataset](docs/14-PILOT-EVALS.md)
-15. [Architecture Decision Records](docs/adr/README.md)
+15. [Operação do piloto](docs/15-PILOT-OPERATIONS.md)
+16. [Visual Direction & Product UI Contract](docs/16-VISUAL-DIRECTION.md)
+17. [Architecture Decision Records](docs/adr/README.md)
 
 O arquivo [`AGENTS.md`](AGENTS.md) concentra guardrails operacionais para agentes de código e deve ser mantido coerente com os documentos acima.
 
