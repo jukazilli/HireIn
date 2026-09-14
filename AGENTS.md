@@ -7,8 +7,9 @@ Before changing code in this repository, read:
 3. `docs/04-ENGINEERING.md`
 4. `docs/07-PRIVACY-SECURITY-LGPD.md`
 5. `docs/09-IMPLEMENTATION-PLAN.md`
-6. `docs/adr/README.md`
-7. any ADR related to the task
+6. `docs/16-VISUAL-DIRECTION.md` for any frontend, UI, UX, copy, imagery or interaction work
+7. `docs/adr/README.md`
+8. any ADR related to the task
 
 ## Product phase
 
@@ -134,6 +135,44 @@ If automation reaches an unknown required field, CAPTCHA, blocked state, expired
 
 Never automatically retry an uncertain submission.
 
+## Visual/UI guardrails
+
+For any frontend, UI, UX, interaction, copy or imagery task, `docs/16-VISUAL-DIRECTION.md` is normative.
+
+The primary visual objective is to avoid generic AI-generated SaaS UI.
+
+Do not produce a screen from a generic dashboard template and recolor it purple.
+
+Do not default to:
+
+- KPI grids at the top of every page;
+- bento layouts without a product reason;
+- glassmorphism;
+- decorative gradient blobs;
+- purple/blue gradients used as universal emphasis;
+- excessive cards, pills, shadows or rounded containers;
+- sparkles, robots, brains or emojis as shorthand for AI;
+- generic startup copy such as “Potencialize”, “Revolucione”, “Desbloqueie seu potencial” or “Transforme sua jornada”;
+- `Inter` as the HireIn brand typeface;
+- a copy of Tinder's visual language.
+
+The product direction is:
+
+- Satoshi for display/headings;
+- General Sans for body/UI;
+- `#6366F1` as primary brand indigo;
+- `#A3E635` as a restrained lime accent;
+- neutral/light surfaces as the majority of the UI;
+- mobile-first composition;
+- semantic HireIn components such as `OpportunityCard`, `MatchEvidence` and `GapMarker` rather than generic decorative cards;
+- Tinder only as a reference for discovery behavior, fast decisions and optional swipe gestures;
+- specific, natural Brazilian Portuguese copy;
+- visual hierarchy driven by the user's current task.
+
+Every meaningful UI change should pass the anti-generic checklist in `docs/16-VISUAL-DIRECTION.md` before merge.
+
+A screen that compiles but could belong to any SaaS is not finished.
+
 ## Dependency policy
 
 Do not add a dependency only to save a few lines of code.
@@ -192,4 +231,5 @@ For critical flows, ensure:
 - contracts remain consistent;
 - migrations are reproducible;
 - cost impact is known for external AI;
-- documentation/ADR is updated when architectural behavior changes.
+- documentation/ADR is updated when architectural behavior changes;
+- frontend changes respect the visual contract and avoid generic UI patterns.
