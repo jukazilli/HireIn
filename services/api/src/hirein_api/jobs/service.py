@@ -73,11 +73,12 @@ async def create_job_posting(
     )
     session.add(job)
     await session.flush()
+    stored_job_id = job.id
     await _apply_payload(session, job, payload, fingerprint)
     await session.commit()
     session.expire_all()
 
-    stored = await get_job(session, job.id)
+    stored = await get_job(session, stored_job_id)
     if stored is None:
         raise RuntimeError("job disappeared after commit")
     return _to_response(stored)
@@ -102,7 +103,7 @@ async def update_job_posting(
     await session.commit()
     session.expire_all()
 
-    stored = await get_job(session, job.id)
+    stored = await get_job(session, job_id)
     if stored is None:
         raise RuntimeError("job disappeared after commit")
     return _to_response(stored)
