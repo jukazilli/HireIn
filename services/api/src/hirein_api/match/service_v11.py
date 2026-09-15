@@ -17,7 +17,6 @@ from hirein_api.match.domain import (
 )
 from hirein_api.match.schemas import (
     JobMatchResponse,
-    MatchEvidenceResponse,
     PreferenceMatchResponse,
     RequirementMatchResponse,
 )
@@ -26,16 +25,16 @@ from hirein_api.match.service import (
     MatchProfileNotFoundError,
     _band,
     _build_candidate_index,
-    _evidence,
     _evaluate_enum_preference,
     _evaluate_requirement,
     _evaluate_salary,
     _evaluate_title,
+    _evidence,
     _preference_result,
     _result,
     _score_requirements,
 )
-from hirein_api.profile.domain import FactKind, FactSource, WorkModel
+from hirein_api.profile.domain import FactKind, WorkModel
 from hirein_api.profile.models import CandidateFact, CandidateSkill, CareerPreference
 from hirein_api.profile.repository import get_primary_profile
 
