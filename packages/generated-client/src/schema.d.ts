@@ -700,11 +700,15 @@ export interface components {
         };
         /** JobRequirementInput */
         JobRequirementInput: {
+            /** Context Qualifier */
+            context_qualifier?: string | null;
             /** @default REQUIRED */
             importance: components["schemas"]["RequirementImportance"];
             kind: components["schemas"]["RequirementKind"];
             /** Min Years */
             min_years?: number | null;
+            required_education_status?: components["schemas"]["EducationStatus"] | null;
+            required_level?: components["schemas"]["SkillLevel"] | null;
             /** Source Text */
             source_text?: string | null;
             /** Value */
@@ -712,6 +716,8 @@ export interface components {
         };
         /** JobRequirementResponse */
         JobRequirementResponse: {
+            /** Context Qualifier */
+            context_qualifier: string | null;
             /**
              * Id
              * Format: uuid
@@ -725,6 +731,8 @@ export interface components {
             normalized_value: string;
             /** Ordinal */
             ordinal: number;
+            required_education_status: components["schemas"]["EducationStatus"] | null;
+            required_level: components["schemas"]["SkillLevel"] | null;
             /** Source Text */
             source_text: string | null;
             /** Value */
