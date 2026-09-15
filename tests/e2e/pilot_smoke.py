@@ -149,7 +149,7 @@ def assert_match_api(page: Page, job_id: str) -> None:
 def save_human_review(page: Page) -> None:
     page.goto(f"{WEB_BASE_URL}/jobs/review", wait_until="domcontentloaded")
     expect(
-        page.get_by_role("heading", name="O algoritmo tem uma opinião. Agora queremos a sua.")
+        page.get_by_role("heading", name="Primeiro a sua opinião. Depois, a do algoritmo.")
     ).to_be_visible()
 
     queue_button = page.get_by_role("button").filter(has_text=COMPANY_NAME)
@@ -159,6 +159,9 @@ def save_human_review(page: Page) -> None:
     expect(
         page.get_by_role("heading", name="Quanto essa vaga faz sentido para você?")
     ).to_be_visible()
+    expect(page.get_by_text("Revelado após salvar", exact=True)).to_be_visible()
+    expect(page.get_by_text("Cobertura", exact=True)).to_have_count(0)
+    expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_have_count(0)
 
     rating_group = page.get_by_role(
         "group", name="Relevância da vaga de zero a quatro"
@@ -167,9 +170,15 @@ def save_human_review(page: Page) -> None:
     page.get_by_label(re.compile(r"^Por quê\?"), exact=False).fill(
         "A oportunidade sintética está alinhada ao perfil usado no smoke test."
     )
-    page.get_by_role("button", name="Salvar minha avaliação").click()
+    page.get_by_role("button", name="Salvar e revelar Match").click()
 
-    expect(page.get_by_text("Sua avaliação foi salva sem alterar o algoritmo.")).to_be_visible()
+    expect(
+        page.get_by_text(
+            "Sua avaliação foi salva. Agora o Match pode ser revelado sem influenciar sua nota inicial."
+        )
+    ).to_be_visible()
+    expect(page.get_by_text("Cobertura", exact=True)).to_be_visible()
+    expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_be_visible()
     expect(page.get_by_text("Recall@5", exact=True)).to_be_visible()
 
     page.reload(wait_until="domcontentloaded")
