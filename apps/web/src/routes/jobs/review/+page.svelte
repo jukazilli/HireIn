@@ -67,7 +67,12 @@
   }
 
   async function selectJob(job: PilotReviewJob) {
-    selectedJob = job; fillEvaluation(job); match = null; error = ''; message = ''; loadingMatch = true;
+    selectedJob = job; fillEvaluation(job); match = null; error = ''; message = '';
+    if (!job.evaluation) {
+      loadingMatch = false;
+      return;
+    }
+    loadingMatch = true;
     try {
       match = await api.getJobMatch(job.job_id);
     } catch (reasonValue) {
@@ -79,6 +84,7 @@
 
   async function saveEvaluation() {
     if (!selectedJob || relevance === null) return;
+    const jobId = selectedJob.job_id;
     saving = true; error = ''; message = '';
     try {
       const payload: PilotEvaluationUpsert = {
@@ -87,13 +93,21 @@
         reason: reason.trim() || null,
         error_category: errorCategory || null
       };
-      const saved = await api.upsertEvaluation(selectedJob.job_id, payload);
+      const saved = await api.upsertEvaluation(jobId, payload);
       jobs = jobs.map((job) =>
-        job.job_id === selectedJob?.job_id ? { ...job, evaluation: saved } : job
+        job.job_id === jobId ? { ...job, evaluation: saved } : job
       );
-      selectedJob = jobs.find((job) => job.job_id === selectedJob?.job_id) ?? selectedJob;
-      message = 'Sua avaliação foi salva sem alterar o algoritmo.';
+      selectedJob = jobs.find((job) => job.job_id === jobId) ?? selectedJob;
+      message = 'Sua avaliação foi salva. Agora o Match pode ser revelado sem influenciar sua nota inicial.';
       await loadReport();
+      loadingMatch = true;
+      try {
+        match = await api.getJobMatch(jobId);
+      } catch (reasonValue) {
+        error = reasonValue instanceof Error ? reasonValue.message : 'A avaliação foi salva, mas não foi possível revelar o Match.';
+      } finally {
+        loadingMatch = false;
+      }
     } catch (reasonValue) {
       error = reasonValue instanceof Error ? reasonValue.message : 'Não foi possível salvar a avaliação.';
     } finally {
@@ -116,10 +130,10 @@
   <section class="page-intro">
     <div class="page-intro-copy">
       <p class="eyebrow">Revisão humana</p>
-      <h1 class="page-title">O algoritmo tem uma opinião. Agora queremos a sua.</h1>
+      <h1 class="page-title">Primeiro a sua opinião. Depois, a do algoritmo.</h1>
       <p class="page-lead">
-        Compare o Match com a sua leitura da oportunidade. Essa diferença mostra onde o produto precisa
-        melhorar antes de receber mais automação ou IA.
+        Nas vagas pendentes, o Match fica oculto até você salvar sua avaliação. Assim medimos a diferença
+        entre a sua leitura real e o algoritmo sem contaminar o benchmark por ancoragem.
       </p>
     </div>
     <aside class="context-note">
@@ -184,8 +198,8 @@
         <div class="review-placeholder">
           <span class="placeholder-line"></span>
           <p class="section-kicker">Sua leitura</p>
-          <h2>Escolha uma vaga para comparar.</h2>
-          <p>Primeiro mostramos o Match. Depois você registra o quanto essa oportunidade realmente faz sentido para o seu momento.</p>
+          <h2>Escolha uma vaga para avaliar.</h2>
+          <p>Nas vagas pendentes, você decide primeiro. O score e os detalhes do Match aparecem somente depois que a sua avaliação for salva.</p>
         </div>
       {:else}
         <div class="work-section review-hero">
@@ -196,7 +210,10 @@
           </div>
           <div class="algorithm-read">
             <span>Leitura do HireIn</span>
-            {#if loadingMatch}
+            {#if !selectedJob.evaluation}
+              <strong>?</strong>
+              <small>Revelado após salvar</small>
+            {:else if loadingMatch}
               <strong>…</strong>
               <small>Analisando</small>
             {:else if match}
@@ -222,7 +239,7 @@
             <div class="section-head-copy">
               <p class="section-kicker">Sua decisão</p>
               <h2 class="section-title">Quanto essa vaga faz sentido para você?</h2>
-              <p class="section-description">Não tente concordar com o score. Responda como candidato.</p>
+              <p class="section-description">Responda como candidato. Nas vagas pendentes, o score só aparece depois de salvar.</p>
             </div>
           </div>
 
@@ -242,23 +259,29 @@
           </label>
 
           <div class="form-grid review-fields">
-            <label class="field">Onde o Match mais errou? <small>Opcional</small>
-              <select bind:value={errorCategory}>
-                <option value="">Nenhum erro dominante / ainda não sei</option>
-                {#each Object.entries(errorLabels) as [value, label]}
-                  <option {value}>{label}</option>
-                {/each}
-              </select>
-            </label>
+            {#if selectedJob.evaluation}
+              <label class="field">Onde o Match mais errou? <small>Opcional, depois de ver o score</small>
+                <select bind:value={errorCategory}>
+                  <option value="">Nenhum erro dominante / ainda não sei</option>
+                  {#each Object.entries(errorLabels) as [value, label]}
+                    <option {value}>{label}</option>
+                  {/each}
+                </select>
+              </label>
+            {/if}
             <label class="field">Por quê? <small>Opcional, mas valioso</small>
-              <textarea rows="5" maxlength="2000" bind:value={reason} placeholder="Ex.: a vaga é boa, mas Protheus e ERP aparecem com nomes diferentes e o Match perdeu essa equivalência."></textarea>
+              <textarea rows="5" maxlength="2000" bind:value={reason} placeholder="Ex.: a vaga faz sentido tecnicamente, mas eu descartaria por localização ou por uma exigência específica."></textarea>
             </label>
           </div>
 
           <div class="action-row save-review">
-            <span class="muted small">Sua avaliação fica separada do algoritmo para podermos medir melhora de verdade.</span>
+            <span class="muted small">
+              {selectedJob.evaluation
+                ? 'Depois de revelar o Match, você pode classificar o erro e atualizar sua avaliação sem mudar a nota inicial automaticamente.'
+                : 'O Match permanece oculto até esta avaliação ser salva.'}
+            </span>
             <button class="btn btn-primary" type="button" disabled={saving || relevance === null} onclick={saveEvaluation}>
-              {saving ? 'Salvando avaliação…' : 'Salvar minha avaliação'}
+              {saving ? 'Salvando avaliação…' : selectedJob.evaluation ? 'Atualizar minha avaliação' : 'Salvar e revelar Match'}
             </button>
           </div>
         </div>
