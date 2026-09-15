@@ -1,16 +1,19 @@
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import type { Cookies } from '@sveltejs/kit';
-import { timingSafeEqual } from 'node:crypto';
 
 export const PILOT_SESSION_COOKIE = 'hirein_pilot_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function safeEqual(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  if (leftBuffer.length !== rightBuffer.length) return false;
-  return timingSafeEqual(leftBuffer, rightBuffer);
+  const maxLength = Math.max(left.length, right.length);
+  let mismatch = left.length ^ right.length;
+
+  for (let index = 0; index < maxLength; index += 1) {
+    mismatch |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+
+  return mismatch === 0;
 }
 
 export function pilotAuthConfigured(): boolean {
