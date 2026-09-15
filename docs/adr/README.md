@@ -30,10 +30,11 @@ Cada ADR deve registrar:
 2. [ADR-0002 — Core backend com Python + FastAPI](0002-backend-python-fastapi.md)
 3. [ADR-0003 — PostgreSQL + pgvector como camada de dados](0003-postgresql-pgvector.md)
 4. [ADR-0004 — Playwright para automação de navegador](0004-playwright-browser-automation.md)
-5. [ADR-0005 — Execução local-first no piloto](0005-local-first-pilot.md)
+5. [ADR-0005 — Execução local-first no piloto (superseded)](0005-local-first-pilot.md)
 6. [ADR-0006 — Adiar escolha definitiva de LLM e embeddings](0006-ai-model-selection-deferred.md)
 7. [ADR-0007 — Fila baseada em PostgreSQL no piloto](0007-postgres-job-queue.md)
 8. [ADR-0008 — Contratos de API gerados a partir de OpenAPI](0008-openapi-contracts.md)
+9. [ADR-0009 — Piloto privado single-user na nuvem](0009-private-cloud-single-user-pilot.md)
 
 ## Regra de governança
 
