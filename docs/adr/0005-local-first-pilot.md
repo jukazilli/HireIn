@@ -1,6 +1,6 @@
 # ADR-0005 — Execução local-first no piloto
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0009
 - **Data:** 2026-09-14
 - **Escopo:** execução do piloto individual
 
@@ -40,11 +40,9 @@ Desvantagens:
 
 Executar frontend, API, browser agent e arquivos sensíveis localmente, usando somente serviços remotos mínimos quando houver benefício claro.
 
-## Decisão
+## Decisão original
 
-O piloto será **local-first**.
-
-Inicialmente:
+O piloto foi inicialmente definido como **local-first**.
 
 ```text
 máquina do usuário
@@ -59,34 +57,23 @@ serviços remotos mínimos
 └── PostgreSQL gerenciado gratuito, quando necessário
 ```
 
-Sempre que for razoável, documentos e credenciais devem permanecer locais.
+## Por que foi substituída
 
-## Consequências positivas
+Durante a preparação do piloto real surgiu uma restrição concreta: a máquina do piloto não possui espaço disponível suficiente para manter Docker, PostgreSQL e a toolchain local sem atrito operacional.
 
-- menor exposição de dados;
-- custo inicial próximo de zero;
-- debugging direto;
-- possibilidade de observar o agente operando;
-- evita construir prematuramente autenticação, tenancy e secret management distribuído.
+Forçar a execução local passou a impedir a própria validação do produto. Esse é um dos tipos de evidência que justificam rever uma decisão arquitetural.
 
-## Trade-offs
+A execução ativa do piloto passa a seguir o [ADR-0009](0009-private-cloud-single-user-pilot.md), preservando o mesmo core e movendo apenas o runtime necessário para a nuvem.
 
-- aplicação não estará disponível 24/7;
-- automações dependem da máquina ligada;
-- experiência ainda não representa um SaaS público;
-- transição futura para infraestrutura remota exigirá trabalho arquitetural adicional.
+## Consequências históricas positivas
 
-## Gatilhos de revisão
+A decisão local-first ajudou a:
 
-Migrar componentes para cloud quando houver uma razão concreta, como:
+- minimizar exposição prematura de dados;
+- provar o core antes de criar autenticação;
+- validar frontend, FastAPI, PostgreSQL, migrations, OpenAPI e E2E antes do hosting remoto;
+- evitar uma reescrita orientada ao provedor.
 
-- necessidade de execução agendada com máquina desligada;
-- private beta com terceiros;
-- sincronização entre dispositivos;
-- necessidade de inbox contínua;
-- processamento pesado incompatível com a máquina local;
-- requisito de disponibilidade permanente.
+## Regra preservada
 
-## Regra
-
-A futura migração para cloud deve acontecer componente por componente, não por uma reescrita completa sem necessidade.
+Mesmo após o ADR-0009, a migração para cloud continua acontecendo componente por componente. Browser automation, storage de documentos e autenticação multiusuário não entram automaticamente apenas porque web/API/banco foram hospedados.

@@ -1,10 +1,6 @@
 <script lang="ts">
   import '../app.css';
-  import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { isVisualPreview } from '$lib/demo-api';
-
-  let visualPreview = false;
 
   const items = [
     { href: '/pilot', label: 'Piloto', icon: 'pilot' },
@@ -20,79 +16,61 @@
     if (href === '/jobs') return path === '/jobs';
     return path.startsWith(href);
   };
-
-  onMount(() => {
-    visualPreview = isVisualPreview();
-  });
 </script>
 
-<div class="app-shell">
-  {#if visualPreview}
-    <div class="preview-banner" role="status">
-      <span>Preview visual</span>
-      <p>Dados sintéticos · alterações ficam somente neste navegador</p>
-    </div>
-  {/if}
+{#if $page.url.pathname === '/login'}
+  <slot />
+{:else}
+  <div class="app-shell">
+    <header class="app-bar">
+      <a class="brand" href="/pilot" aria-label="HireIn — abrir piloto">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><b></b></span>
+        <span class="brand-word">Hire<span>In</span></span>
+        <small>piloto privado</small>
+      </a>
 
-  <header class="app-bar" class:with-preview={visualPreview}>
-    <a class="brand" href="/pilot" aria-label="HireIn — abrir piloto">
-      <span class="brand-mark" aria-hidden="true"><i></i><i></i><b></b></span>
-      <span class="brand-word">Hire<span>In</span></span>
-      <small>piloto</small>
-    </a>
+      <nav class="desktop-nav" aria-label="Navegação principal">
+        {#each items as item}
+          <a class:active={isActive(item.href)} href={item.href}>{item.label}</a>
+        {/each}
+      </nav>
 
-    <nav class="desktop-nav" aria-label="Navegação principal">
+      <div class="header-actions">
+        <div class="pilot-state" title="Piloto individual · revisão humana">
+          <span aria-hidden="true"></span>
+          privado
+        </div>
+        <form method="POST" action="/logout">
+          <button class="logout-button" type="submit" title="Sair do piloto">Sair</button>
+        </form>
+      </div>
+    </header>
+
+    <slot />
+
+    <nav class="mobile-nav" aria-label="Navegação principal mobile">
       {#each items as item}
-        <a class:active={isActive(item.href)} href={item.href}>{item.label}</a>
+        <a class:active={isActive(item.href)} href={item.href} aria-label={item.label}>
+          {#if item.icon === 'pilot'}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2" /></svg>
+          {:else if item.icon === 'profile'}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3.5 3.1-5.2 6.5-5.2s5.7 1.7 6.5 5.2"/></svg>
+          {:else if item.icon === 'jobs'}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M9 7V5h6v2M4 12h16"/></svg>
+          {:else if item.icon === 'match'}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4l2.2-5 3.4 10L16 12h4"/></svg>
+          {:else}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+          {/if}
+          <span>{item.label}</span>
+        </a>
       {/each}
     </nav>
-
-    <div class="pilot-state" title="Piloto individual · Auto Apply desativado">
-      <span aria-hidden="true"></span>
-      revisão humana
-    </div>
-  </header>
-
-  <slot />
-
-  <nav class="mobile-nav" aria-label="Navegação principal mobile">
-    {#each items as item}
-      <a class:active={isActive(item.href)} href={item.href} aria-label={item.label}>
-        {#if item.icon === 'pilot'}
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2" /></svg>
-        {:else if item.icon === 'profile'}
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19c.8-3.5 3.1-5.2 6.5-5.2s5.7 1.7 6.5 5.2"/></svg>
-        {:else if item.icon === 'jobs'}
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M9 7V5h6v2M4 12h16"/></svg>
-        {:else if item.icon === 'match'}
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4l2.2-5 3.4 10L16 12h4"/></svg>
-        {:else}
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
-        {/if}
-        <span>{item.label}</span>
-      </a>
-    {/each}
-  </nav>
-</div>
+  </div>
+{/if}
 
 <style>
   .app-shell { min-height: 100vh; }
-  .preview-banner {
-    position: sticky;
-    top: 0;
-    z-index: 70;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: .6rem;
-    min-height: 28px;
-    padding: .25rem .8rem;
-    background: var(--lime-100);
-    color: #405b0a;
-    font-size: .68rem;
-  }
-  .preview-banner span { font-weight: 760; text-transform: uppercase; letter-spacing: .07em; }
-  .preview-banner p { margin: 0; }
   .app-bar {
     position: sticky;
     top: 0;
@@ -106,7 +84,6 @@
     background: rgb(250 250 251 / 94%);
     backdrop-filter: blur(16px);
   }
-  .app-bar.with-preview { top: 28px; }
   .brand { display: inline-flex; align-items: center; gap: .55rem; color: var(--text-primary); text-decoration: none; }
   .brand-word { font-family: var(--font-display); font-size: 1.28rem; font-weight: 720; letter-spacing: -.045em; }
   .brand-word span { color: var(--brand-500); }
@@ -123,21 +100,21 @@
   .desktop-nav a.active { color: var(--brand-700); background: var(--brand-50); }
   .desktop-nav a.active::after { content: ""; position: absolute; left: 50%; bottom: -.56rem; width: 18px; height: 3px; border-radius: 999px; background: var(--lime-400); transform: translateX(-50%); }
 
+  .header-actions { display: flex; align-items: center; gap: .65rem; }
   .pilot-state { display: inline-flex; align-items: center; gap: .45rem; color: var(--text-muted); font-size: .72rem; font-weight: 600; }
   .pilot-state > span { width: 7px; height: 7px; border-radius: 50%; background: var(--lime-400); box-shadow: 0 0 0 3px var(--lime-100); }
+  .logout-button { border: 0; background: transparent; padding: .45rem .5rem; color: var(--text-muted); font: inherit; font-size: .72rem; font-weight: 650; cursor: pointer; }
+  .logout-button:hover { color: var(--text-primary); }
 
   .mobile-nav { display: none; }
   svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
   @media (max-width: 760px) {
-    .preview-banner { justify-content: flex-start; min-height: 30px; overflow: hidden; white-space: nowrap; }
-    .preview-banner p { overflow: hidden; text-overflow: ellipsis; }
-    .app-bar.with-preview { top: 30px; }
     .app-bar { min-height: var(--nav-height); grid-template-columns: 1fr auto; padding: 0 .9rem; }
     .desktop-nav { display: none; }
     .brand small { display: none; }
-    .pilot-state { font-size: 0; }
-    .pilot-state::after { content: 'piloto'; font-size: .68rem; }
+    .pilot-state { display: none; }
+    .logout-button { font-size: .68rem; }
     .mobile-nav {
       position: fixed;
       z-index: 60;

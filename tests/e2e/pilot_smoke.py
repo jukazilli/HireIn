@@ -7,8 +7,8 @@ from pathlib import Path
 from playwright.sync_api import Page, expect, sync_playwright
 
 WEB_BASE_URL = os.getenv("E2E_WEB_BASE_URL", "http://localhost:5173")
-API_BASE_URL = os.getenv("E2E_API_BASE_URL", "http://localhost:8000")
 ARTIFACT_DIR = Path(os.getenv("E2E_ARTIFACT_DIR", "e2e-artifacts"))
+PILOT_PASSWORD = os.getenv("E2E_PILOT_PASSWORD", "hirein-e2e-password")
 
 CANDIDATE_NAME = "Candidato Sintetico E2E"
 COMPANY_NAME = "Empresa Sintetica E2E"
@@ -20,11 +20,19 @@ def combobox(page: Page, label: str):
     return page.get_by_role("combobox", name=re.compile(rf"^{re.escape(label)}"))
 
 
+def login(page: Page) -> None:
+    page.goto(f"{WEB_BASE_URL}/pilot", wait_until="domcontentloaded")
+    expect(page).to_have_url(re.compile(r"/login\?next="))
+    expect(page.get_by_role("heading", name="Entre no seu HireIn")).to_be_visible()
+    page.get_by_label("Senha do piloto", exact=True).fill(PILOT_PASSWORD)
+    page.get_by_role("button", name="Entrar").click()
+    expect(page).to_have_url(f"{WEB_BASE_URL}/pilot")
+
+
 def fill_profile(page: Page) -> None:
     page.goto(WEB_BASE_URL, wait_until="domcontentloaded")
     expect(page.get_by_role("heading", name="Mostre ao HireIn o que você já construiu.")).to_be_visible()
 
-    # The form is client-rendered after the real API answers the initial GET /profile.
     expect(page.get_by_label("Nome completo", exact=True)).to_be_visible()
 
     page.get_by_label("Nome completo", exact=True).fill(CANDIDATE_NAME)
@@ -59,7 +67,6 @@ def fill_profile(page: Page) -> None:
         page.get_by_text("Perfil salvo. Estas informações estão confirmadas por você.")
     ).to_be_visible()
 
-    # Reload proves the browser is reading state persisted by the real API/database.
     page.reload(wait_until="domcontentloaded")
     expect(page.get_by_label("Nome completo", exact=True)).to_be_visible()
     expect(page.get_by_label("Nome completo", exact=True)).to_have_value(CANDIDATE_NAME)
@@ -67,7 +74,7 @@ def fill_profile(page: Page) -> None:
 
 
 def assert_profile_persisted(page: Page) -> None:
-    response = page.request.get(f"{API_BASE_URL}/api/v1/profile")
+    response = page.request.get(f"{WEB_BASE_URL}/api/v1/profile")
     assert response.ok, f"GET /profile returned {response.status}: {response.text()}"
     body = response.json()
     assert body["full_name"] == CANDIDATE_NAME
@@ -108,7 +115,7 @@ def create_job(page: Page) -> None:
 
 
 def get_created_job_id(page: Page) -> str:
-    response = page.request.get(f"{API_BASE_URL}/api/v1/jobs")
+    response = page.request.get(f"{WEB_BASE_URL}/api/v1/jobs")
     assert response.ok, f"GET /jobs returned {response.status}: {response.text()}"
     jobs = response.json()
     created = next((job for job in jobs if job["company_name"] == COMPANY_NAME), None)
@@ -130,7 +137,7 @@ def calculate_match(page: Page) -> None:
 
 
 def assert_match_api(page: Page, job_id: str) -> None:
-    response = page.request.get(f"{API_BASE_URL}/api/v1/jobs/{job_id}/match")
+    response = page.request.get(f"{WEB_BASE_URL}/api/v1/jobs/{job_id}/match")
     assert response.ok, f"GET /jobs/{{id}}/match returned {response.status}: {response.text()}"
     match = response.json()
     assert match["job_id"] == job_id
@@ -165,14 +172,13 @@ def save_human_review(page: Page) -> None:
     expect(page.get_by_text("Sua avaliação foi salva sem alterar o algoritmo.")).to_be_visible()
     expect(page.get_by_text("Recall@5", exact=True)).to_be_visible()
 
-    # Reload and re-read the queue to prove the human review also survived persistence.
     page.reload(wait_until="domcontentloaded")
     queue_button = page.get_by_role("button").filter(has_text=COMPANY_NAME)
     expect(queue_button).to_contain_text("4/4")
 
 
 def assert_review_api(page: Page, job_id: str) -> None:
-    response = page.request.get(f"{API_BASE_URL}/api/v1/evals/jobs")
+    response = page.request.get(f"{WEB_BASE_URL}/api/v1/evals/jobs")
     assert response.ok, f"GET /evals/jobs returned {response.status}: {response.text()}"
     jobs = response.json()
     created = next((job for job in jobs if job["job_id"] == job_id), None)
@@ -180,12 +186,19 @@ def assert_review_api(page: Page, job_id: str) -> None:
     assert created["evaluation"] is not None
     assert created["evaluation"]["relevance"] == 4
 
-    report_response = page.request.get(f"{API_BASE_URL}/api/v1/evals/report")
+    report_response = page.request.get(f"{WEB_BASE_URL}/api/v1/evals/report")
     assert report_response.ok, (
         f"GET /evals/report returned {report_response.status}: {report_response.text()}"
     )
     report = report_response.json()
     assert report["metrics"]["sample_count"] == 1
+
+
+def logout(page: Page) -> None:
+    page.get_by_role("button", name="Sair").click()
+    expect(page).to_have_url(f"{WEB_BASE_URL}/login")
+    page.goto(f"{WEB_BASE_URL}/pilot", wait_until="domcontentloaded")
+    expect(page).to_have_url(re.compile(r"/login\?next="))
 
 
 def run() -> None:
@@ -199,6 +212,7 @@ def run() -> None:
         page.on("pageerror", lambda error: page_errors.append(str(error)))
 
         try:
+            login(page)
             fill_profile(page)
             assert_profile_persisted(page)
             create_job(page)
@@ -207,6 +221,7 @@ def run() -> None:
             assert_match_api(page, job_id)
             save_human_review(page)
             assert_review_api(page, job_id)
+            logout(page)
 
             assert not page_errors, f"Browser page errors detected: {page_errors}"
             page.screenshot(path=str(ARTIFACT_DIR / "pilot-smoke-success.png"), full_page=True)

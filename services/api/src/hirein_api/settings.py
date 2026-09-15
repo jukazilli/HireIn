@@ -10,6 +10,7 @@ class Settings:
     database_url: str
     log_level: str
     cors_origins: tuple[str, ...]
+    pilot_backend_token: str | None
 
 
 def load_settings() -> Settings:
@@ -18,6 +19,7 @@ def load_settings() -> Settings:
         for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
         if origin.strip()
     )
+    backend_token = os.getenv("PILOT_BACKEND_TOKEN", "").strip() or None
 
     return Settings(
         app_env=os.getenv("APP_ENV", "development"),
@@ -27,4 +29,5 @@ def load_settings() -> Settings:
         ),
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         cors_origins=origins,
+        pilot_backend_token=backend_token,
     )
