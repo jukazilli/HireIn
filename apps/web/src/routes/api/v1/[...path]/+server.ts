@@ -13,6 +13,8 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade'
 ]);
 
+const BODY_METADATA_HEADERS = new Set(['content-encoding', 'content-length']);
+
 function apiOrigin(): string | null {
   const configured = env.HIREIN_API_URL?.trim();
   if (configured) return configured.replace(/\/$/, '');
@@ -23,7 +25,12 @@ function apiOrigin(): string | null {
 function responseHeaders(upstream: Response): Headers {
   const headers = new Headers();
   upstream.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase()) && key.toLowerCase() !== 'set-cookie') {
+    const normalizedKey = key.toLowerCase();
+    if (
+      !HOP_BY_HOP_HEADERS.has(normalizedKey) &&
+      !BODY_METADATA_HEADERS.has(normalizedKey) &&
+      normalizedKey !== 'set-cookie'
+    ) {
       headers.set(key, value);
     }
   });
@@ -60,7 +67,12 @@ const proxy: RequestHandler = async ({ params, request, url }) => {
       signal: AbortSignal.timeout(20_000)
     });
 
-    return new Response(upstream.body, {
+    const responseBody =
+      method === 'HEAD' || upstream.status === 204 || upstream.status === 304
+        ? null
+        : await upstream.arrayBuffer();
+
+    return new Response(responseBody, {
       status: upstream.status,
       headers: responseHeaders(upstream)
     });
