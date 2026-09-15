@@ -135,6 +135,7 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
     assert result["requirement_results"][0]["evidence"][0]["source_type"] == "USER_CONFIRMED"
     assert result["warnings"] == [
         "safe_alias_matching_only",
+        "structured_requirement_qualifiers_enabled",
         "unconfirmed_candidate_data_excluded",
         "score_is_not_hiring_probability",
         "preference_score_requires_50pct_coverage",
