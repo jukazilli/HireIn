@@ -183,12 +183,18 @@ def _calibrate_requirement(
 def _job_requires_presence(job: JobPosting) -> bool:
     if job.work_model == WorkModel.REMOTE.value:
         return False
-    if job.work_model in {WorkModel.HYBRID.value, WorkModel.ONSITE.value}:
-        return True
     location = _canonical(job.location_text or "")
     if "remoto" in location or "remote" in location:
         return False
-    return bool(job.city or job.state)
+
+    # Modalidade sozinha não revela para onde a pessoa teria de se deslocar.
+    # Um blocker de localização exige evidência geográfica concreta.
+    if not job.city and not job.state:
+        return False
+
+    if job.work_model in {WorkModel.HYBRID.value, WorkModel.ONSITE.value}:
+        return True
+    return True
 
 
 def _evaluate_location_v11(
