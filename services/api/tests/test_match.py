@@ -134,9 +134,10 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
     assert result["requirement_results"][0]["status"] == "MATCHED"
     assert result["requirement_results"][0]["evidence"][0]["source_type"] == "USER_CONFIRMED"
     assert result["warnings"] == [
-        "exact_matching_only",
+        "safe_alias_matching_only",
         "unconfirmed_candidate_data_excluded",
         "score_is_not_hiring_probability",
+        "preference_score_requires_50pct_coverage",
     ]
 
 
@@ -233,6 +234,95 @@ def test_preference_conflict_is_not_a_blocker() -> None:
     assert "blocker" in work_model["reason"]
     assert result["score"] is not None
     assert result["matched_required"] == 1
+
+
+def test_safe_generic_alias_matches_agile_methodology() -> None:
+    profile = _profile_payload()
+    profile["skills"] = [{"name": "Scrum"}]
+    profile["preferences"] = {"target_locations": ["Joinville - SC"]}
+    job = _job_payload()
+    job["work_model"] = "REMOTE"
+    job["contract_type"] = None
+    job["seniority"] = None
+    job["salary_min"] = None
+    job["salary_max"] = None
+    job["requirements"] = [
+        {"kind": "SKILL", "importance": "REQUIRED", "value": "Metodologias ágeis"}
+    ]
+
+    with TestClient(app) as client:
+        assert client.put("/api/v1/profile", json=profile).status_code == 200
+        created = client.post("/api/v1/jobs", json=job)
+        response = client.get(f"/api/v1/jobs/{created.json()['id']}/match")
+
+    result = response.json()
+    assert result["requirement_score"] == 100
+    assert result["matched_required"] == 1
+    assert result["requirement_results"][0]["status"] == "MATCHED"
+    assert "equivalência segura" in result["requirement_results"][0]["reason"].lower()
+
+
+def test_location_outside_targets_blocks_when_relocation_is_false() -> None:
+    profile = _profile_payload()
+    profile["preferences"] = {
+        "target_locations": ["Joinville - SC", "Santa Catarina"],
+        "willing_to_relocate": False,
+    }
+    job = _job_payload()
+    job["location_text"] = "Recife - PE"
+    job["city"] = "Recife"
+    job["state"] = "PE"
+    job["work_model"] = "HYBRID"
+    job["contract_type"] = None
+    job["seniority"] = None
+    job["salary_min"] = None
+    job["salary_max"] = None
+    job["requirements"] = [
+        {"kind": "SKILL", "importance": "REQUIRED", "value": "TOTVS Protheus"}
+    ]
+
+    with TestClient(app) as client:
+        assert client.put("/api/v1/profile", json=profile).status_code == 200
+        created = client.post("/api/v1/jobs", json=job)
+        response = client.get(f"/api/v1/jobs/{created.json()['id']}/match")
+
+    result = response.json()
+    location = next(
+        item for item in result["preference_results"] if item["aspect"] == "LOCATION"
+    )
+    assert result["requirement_score"] == 100
+    assert location["status"] == "CONFLICT"
+    assert result["score"] == 0
+    assert result["band"] == "LOW"
+    assert "location_preference_blocker" in result["warnings"]
+
+
+def test_sparse_preferences_do_not_produce_artificial_100_percent() -> None:
+    profile = _profile_payload()
+    profile["preferences"] = {
+        "target_locations": ["Joinville - SC"],
+        "willing_to_relocate": False,
+    }
+    job = _job_payload()
+    job["work_model"] = None
+    job["contract_type"] = None
+    job["seniority"] = None
+    job["salary_min"] = None
+    job["salary_max"] = None
+    job["requirements"] = [
+        {"kind": "SKILL", "importance": "REQUIRED", "value": "TOTVS Protheus"}
+    ]
+
+    with TestClient(app) as client:
+        assert client.put("/api/v1/profile", json=profile).status_code == 200
+        created = client.post("/api/v1/jobs", json=job)
+        response = client.get(f"/api/v1/jobs/{created.json()['id']}/match")
+
+    result = response.json()
+    assert result["requirement_score"] == 100
+    assert result["preference_score"] is None
+    assert result["score"] == 100
+    assert any(item.startswith("preference_coverage_") for item in result["warnings"])
 
 
 def test_unknown_requirement_can_force_insufficient_data() -> None:
