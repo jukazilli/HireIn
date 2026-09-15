@@ -30,7 +30,6 @@
         type="password"
         autocomplete="current-password"
         required
-        autofocus
         disabled={!data.configured}
       />
 
