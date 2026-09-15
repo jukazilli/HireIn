@@ -26,7 +26,13 @@ from hirein_api.jobs.schemas import (
     JobRequirementResponse,
     JobSummaryResponse,
 )
-from hirein_api.profile.domain import ContractType, Seniority, WorkModel
+from hirein_api.profile.domain import (
+    ContractType,
+    EducationStatus,
+    Seniority,
+    SkillLevel,
+    WorkModel,
+)
 
 
 class DuplicateJobError(Exception):
@@ -175,6 +181,21 @@ async def _apply_payload(
                 value=requirement_input.value.strip(),
                 normalized_value=_normalize(requirement_input.value),
                 min_years=_decimal(requirement_input.min_years),
+                required_level=(
+                    requirement_input.required_level.value
+                    if requirement_input.required_level
+                    else None
+                ),
+                required_education_status=(
+                    requirement_input.required_education_status.value
+                    if requirement_input.required_education_status
+                    else None
+                ),
+                context_qualifier=(
+                    requirement_input.context_qualifier.strip()
+                    if requirement_input.context_qualifier
+                    else None
+                ),
                 source_text=requirement_input.source_text,
                 ordinal=ordinal,
             )
@@ -217,6 +238,17 @@ def _to_response(job: JobPosting) -> JobPostingResponse:
                 min_years=float(requirement.min_years)
                 if requirement.min_years is not None
                 else None,
+                required_level=(
+                    SkillLevel(requirement.required_level)
+                    if requirement.required_level
+                    else None
+                ),
+                required_education_status=(
+                    EducationStatus(requirement.required_education_status)
+                    if requirement.required_education_status
+                    else None
+                ),
+                context_qualifier=requirement.context_qualifier,
                 source_text=requirement.source_text,
                 ordinal=requirement.ordinal,
             )
