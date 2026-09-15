@@ -8,12 +8,13 @@ Before changing code in this repository, read:
 4. `docs/07-PRIVACY-SECURITY-LGPD.md`
 5. `docs/09-IMPLEMENTATION-PLAN.md`
 6. `docs/16-VISUAL-DIRECTION.md` for any frontend, UI, UX, copy, imagery or interaction work
-7. `docs/adr/README.md`
-8. any ADR related to the task
+7. `docs/18-PRIVATE-CLOUD-PILOT.md` for pilot hosting/security work
+8. `docs/adr/README.md`
+9. any ADR related to the task
 
 ## Product phase
 
-HireIn is currently a **single-user local-first pilot**.
+HireIn is currently a **single-user private cloud pilot**.
 
 Do not prematurely turn it into a public SaaS.
 
@@ -38,8 +39,11 @@ Current accepted direction:
 - ORM/migrations: SQLAlchemy 2 + Alembic
 - Browser automation later: Playwright Python
 - Pilot job queue: PostgreSQL
-- Pilot execution: local-first
+- Pilot execution: private cloud, single-user
+- Browser/API boundary: same-origin SvelteKit proxy
 - API contracts: OpenAPI → generated TypeScript client
+
+The active runtime decision is ADR-0009. ADR-0005 is historical/superseded.
 
 Do not replace an accepted architectural decision without an ADR and concrete evidence.
 
@@ -66,7 +70,7 @@ Domain code must not depend directly on:
 - LLM SDKs;
 - Playwright;
 - Neon-specific SDKs;
-- Cloudflare-specific SDKs;
+- hosting-provider-specific SDKs;
 - ATS-specific implementations.
 
 Use ports/adapters at external boundaries.
@@ -111,13 +115,31 @@ Do not version:
 - tokens;
 - `.env` files;
 - authenticated page HTML;
-- real ATS credentials.
+- real ATS credentials;
+- database connection strings.
 
-Use synthetic fixtures in Git.
+Use synthetic fixtures in Git and CI.
 
-Real pilot data belongs in ignored local storage such as `.local-data/`.
+Real pilot data belongs only in the private pilot datastore (currently managed PostgreSQL) or in explicitly ignored private storage. It must never be copied into fixtures, PR descriptions, CI artifacts or source files.
+
+The browser must never receive database credentials or the backend-to-backend token.
 
 Logs must avoid unnecessary PII and secrets.
+
+## Private cloud pilot security
+
+For the single-user cloud pilot:
+
+- SvelteKit owns the user-facing login gate;
+- the session cookie must be `HttpOnly`, `Secure` outside dev and `SameSite=Strict`;
+- browser requests use the same-origin `/api/v1/*` proxy;
+- SvelteKit injects the server-only backend token;
+- FastAPI protects `/api/v1/*` when `PILOT_BACKEND_TOKEN` is configured;
+- health endpoints may remain unauthenticated for provider health checks;
+- missing production auth configuration must fail closed;
+- secrets must be stored in provider secret/environment stores, never in Git.
+
+This is not the final multi-user authentication design. Do not add registration, tenants or user tables merely because the pilot moved to cloud.
 
 ## Automation safety
 
@@ -200,7 +222,9 @@ Prioritize tests around risk:
 - deduplication;
 - structured AI outputs;
 - migration correctness;
-- API contracts.
+- API contracts;
+- authentication/proxy boundaries;
+- remote pilot smoke flow with synthetic data.
 
 External ATS websites must not be required for normal CI.
 
@@ -212,9 +236,10 @@ Implement in this order unless the task explicitly says otherwise:
 2. Candidate Core;
 3. Job Core;
 4. deterministic Match v0;
-5. local evaluation dataset tooling;
-6. controlled AI tasks;
-7. Application Draft.
+5. pilot evaluation dataset tooling;
+6. private cloud pilot runtime;
+7. controlled AI tasks;
+8. Application Draft.
 
 Do not build the extension or browser agent before the matching/application-draft slice is validated.
 
