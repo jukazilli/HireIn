@@ -13,7 +13,13 @@ from hirein_api.jobs.domain import (
     RequirementKind,
     SalaryPeriod,
 )
-from hirein_api.profile.domain import ContractType, Seniority, WorkModel
+from hirein_api.profile.domain import (
+    ContractType,
+    EducationStatus,
+    Seniority,
+    SkillLevel,
+    WorkModel,
+)
 
 
 class JobRequirementInput(BaseModel):
@@ -21,7 +27,26 @@ class JobRequirementInput(BaseModel):
     importance: RequirementImportance = RequirementImportance.REQUIRED
     value: str = Field(min_length=1, max_length=500)
     min_years: float | None = Field(default=None, ge=0, le=99)
+    required_level: SkillLevel | None = None
+    required_education_status: EducationStatus | None = None
+    context_qualifier: str | None = Field(default=None, max_length=240)
     source_text: str | None = None
+
+    @model_validator(mode="after")
+    def validate_qualifier_scope(self) -> Self:
+        if self.required_level is not None and self.kind not in {
+            RequirementKind.SKILL,
+            RequirementKind.TOOL,
+        }:
+            raise ValueError("required_level is only valid for SKILL or TOOL requirements")
+        if (
+            self.required_education_status is not None
+            and self.kind != RequirementKind.EDUCATION
+        ):
+            raise ValueError(
+                "required_education_status is only valid for EDUCATION requirements"
+            )
+        return self
 
 
 class JobPostingUpsert(BaseModel):
@@ -88,6 +113,9 @@ class JobRequirementResponse(BaseModel):
     value: str
     normalized_value: str
     min_years: float | None
+    required_level: SkillLevel | None
+    required_education_status: EducationStatus | None
+    context_qualifier: str | None
     source_text: str | None
     ordinal: int
 
