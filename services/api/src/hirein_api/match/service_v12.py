@@ -11,6 +11,8 @@ from hirein_api.match.service import _band
 from hirein_api.match.service_v11 import (
     MatchJobNotFoundError,
     MatchProfileNotFoundError,
+)
+from hirein_api.match.service_v11 import (
     calculate_job_match as calculate_job_match_v11,
 )
 
