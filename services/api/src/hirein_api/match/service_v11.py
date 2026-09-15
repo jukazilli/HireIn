@@ -34,7 +34,7 @@ from hirein_api.match.service import (
     _result,
     _score_requirements,
 )
-from hirein_api.profile.domain import FactKind, WorkModel
+from hirein_api.profile.domain import EducationStatus, FactKind, SkillLevel, WorkModel
 from hirein_api.profile.models import CandidateFact, CandidateSkill, CareerPreference
 from hirein_api.profile.repository import get_primary_profile
 
@@ -42,10 +42,18 @@ MINIMUM_PREFERENCE_COVERAGE = 50
 
 WARNINGS_V11 = [
     "safe_alias_matching_only",
+    "structured_requirement_qualifiers_enabled",
     "unconfirmed_candidate_data_excluded",
     "score_is_not_hiring_probability",
     "preference_score_requires_50pct_coverage",
 ]
+
+SKILL_LEVEL_RANK = {
+    SkillLevel.BEGINNER.value: 1,
+    SkillLevel.INTERMEDIATE.value: 2,
+    SkillLevel.ADVANCED.value: 3,
+    SkillLevel.EXPERT.value: 4,
+}
 
 # Equivalências deliberadamente pequenas e auditáveis. Não tentam substituir embeddings/LLM.
 SAFE_GENERIC_ALIASES: dict[tuple[RequirementKind, str], set[str]] = {
@@ -63,6 +71,15 @@ SAFE_GENERIC_ALIASES: dict[tuple[RequirementKind, str], set[str]] = {
         "ms project",
         "microsoft project",
     },
+}
+
+GENERIC_EDUCATION_VALUES = {
+    "graduacao",
+    "graduacao completa",
+    "superior",
+    "superior completo",
+    "ensino superior",
+    "ensino superior completo",
 }
 
 
@@ -118,6 +135,76 @@ def _tool_fact_match(
         RequirementMatchStatus.MATCHED,
         reason,
         [_evidence("FACT", fact.id, fact.value, fact.source_type, "TOOL")],
+    )
+
+
+def _match_generic_education(
+    requirement: JobRequirement,
+    index: object,
+) -> RequirementMatchResponse | None:
+    if RequirementKind(requirement.kind) != RequirementKind.EDUCATION:
+        return None
+    if _canonical(requirement.value) not in GENERIC_EDUCATION_VALUES:
+        return None
+
+    education = list(index.education)  # type: ignore[attr-defined]
+    if not education:
+        return _result(
+            requirement,
+            RequirementMatchStatus.UNKNOWN,
+            "O perfil não possui formação confirmada para avaliar a exigência genérica.",
+        )
+
+    required_status = requirement.required_education_status
+    if required_status is None:
+        item = education[0]
+        return _result(
+            requirement,
+            RequirementMatchStatus.MATCHED,
+            "Há formação confirmada para a exigência genérica de graduação.",
+            [
+                _evidence(
+                    "EDUCATION",
+                    item.id,
+                    item.course,
+                    item.source_type,
+                    item.status,
+                )
+            ],
+        )
+
+    matching = next((item for item in education if item.status == required_status), None)
+    if matching is not None:
+        return _result(
+            requirement,
+            RequirementMatchStatus.MATCHED,
+            "A formação confirmada atende ao status exigido pela vaga.",
+            [
+                _evidence(
+                    "EDUCATION",
+                    matching.id,
+                    matching.course,
+                    matching.source_type,
+                    matching.status,
+                )
+            ],
+        )
+
+    item = education[0]
+    status_label = EducationStatus(required_status).value
+    return _result(
+        requirement,
+        RequirementMatchStatus.GAP,
+        f"A vaga exige formação {status_label}, mas esse status não foi confirmado no perfil.",
+        [
+            _evidence(
+                "EDUCATION",
+                item.id,
+                item.course,
+                item.source_type,
+                item.status,
+            )
+        ],
     )
 
 
@@ -178,6 +265,92 @@ def _calibrate_requirement(
             )
 
     return base_result
+
+
+def _candidate_has_context(index: object, qualifier: str) -> bool:
+    target = _canonical(qualifier)
+    if not target:
+        return True
+
+    facts = list(index.facts)  # type: ignore[attr-defined]
+    if any(target in _canonical(item.value) for item in facts):
+        return True
+
+    experiences = list(index.experiences)  # type: ignore[attr-defined]
+    return any(
+        item.description is not None and target in _canonical(item.description)
+        for item in experiences
+    )
+
+
+def _apply_structured_qualifiers(
+    requirement: JobRequirement,
+    result: RequirementMatchResponse,
+    index: object,
+) -> RequirementMatchResponse:
+    if result.status != RequirementMatchStatus.MATCHED:
+        return result
+
+    if requirement.required_level is not None:
+        skill_evidence = next(
+            (item for item in result.evidence if item.entity_type == "SKILL"),
+            None,
+        )
+        if skill_evidence is None:
+            return _result(
+                requirement,
+                RequirementMatchStatus.UNKNOWN,
+                "A competência foi encontrada, mas o nível exigido não pode ser comprovado.",
+                result.evidence,
+            )
+
+        skill = next(
+            (
+                item
+                for item in index.skills  # type: ignore[attr-defined]
+                if item.id == skill_evidence.entity_id
+            ),
+            None,
+        )
+        if skill is None or skill.level is None:
+            return _result(
+                requirement,
+                RequirementMatchStatus.UNKNOWN,
+                "A competência existe, mas o nível do candidato ainda não foi confirmado.",
+                result.evidence,
+            )
+
+        candidate_rank = SKILL_LEVEL_RANK.get(skill.level)
+        required_rank = SKILL_LEVEL_RANK.get(requirement.required_level)
+        if candidate_rank is None or required_rank is None:
+            return _result(
+                requirement,
+                RequirementMatchStatus.UNKNOWN,
+                "O nível informado não pode ser comparado com segurança.",
+                result.evidence,
+            )
+        if candidate_rank < required_rank:
+            return _result(
+                requirement,
+                RequirementMatchStatus.GAP,
+                "A competência existe, mas o nível confirmado é inferior ao exigido.",
+                result.evidence,
+            )
+
+    if requirement.context_qualifier is not None and not _candidate_has_context(
+        index, requirement.context_qualifier
+    ):
+        return _result(
+            requirement,
+            RequirementMatchStatus.UNKNOWN,
+            (
+                "A competência-base existe, mas o qualificador de contexto da vaga "
+                "ainda não possui evidência confirmada no perfil."
+            ),
+            result.evidence,
+        )
+
+    return result
 
 
 def _job_requires_presence(job: JobPosting) -> bool:
@@ -335,9 +508,11 @@ async def calculate_job_match(session: AsyncSession, job_id: uuid.UUID) -> JobMa
     index = await _build_candidate_index(session, profile)
     requirement_results = []
     for requirement in job.requirements:
-        base = _evaluate_requirement(requirement, index)
+        generic_education = _match_generic_education(requirement, index)
+        base = generic_education or _evaluate_requirement(requirement, index)
+        calibrated = _calibrate_requirement(requirement, base, index.skills, index.facts)
         requirement_results.append(
-            _calibrate_requirement(requirement, base, index.skills, index.facts)
+            _apply_structured_qualifiers(requirement, calibrated, index)
         )
 
     preference_results = _evaluate_preferences_v11(profile.preference, job)
