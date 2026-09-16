@@ -15,7 +15,7 @@ from hirein_api.db import create_engine, create_session_factory
 from hirein_api.evals.routes import router as evals_router
 from hirein_api.jobs.routes import router as jobs_router
 from hirein_api.profile.routes import router as profile_router
-from hirein_api.security import valid_backend_token
+from hirein_api.security import valid_backend_token, valid_ingestion_token
 from hirein_api.settings import load_settings
 
 settings = load_settings()
@@ -45,7 +45,12 @@ app.add_middleware(
     allow_origins=list(settings.cors_origins),
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-HireIn-Pilot-Token"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-HireIn-Pilot-Token",
+        "X-HireIn-Ingestion-Token",
+    ],
 )
 
 CallNext = Callable[[Request], Awaitable[Response]]
@@ -55,7 +60,20 @@ CallNext = Callable[[Request], Awaitable[Response]]
 async def protect_pilot_api(request: Request, call_next: CallNext) -> Response:
     if request.url.path.startswith("/api/v1/"):
         provided = request.headers.get("x-hirein-pilot-token")
-        if not valid_backend_token(settings.pilot_backend_token, provided):
+        authorized = valid_backend_token(settings.pilot_backend_token, provided)
+
+        is_job_ingestion = (
+            request.method.upper() == "POST"
+            and request.url.path.rstrip("/") == "/api/v1/jobs"
+        )
+        if not authorized and is_job_ingestion:
+            ingestion_token = request.headers.get("x-hirein-ingestion-token")
+            authorized = valid_ingestion_token(
+                settings.job_ingestion_token,
+                ingestion_token,
+            )
+
+        if not authorized:
             return JSONResponse(status_code=401, content={"detail": "unauthorized"})
     return await call_next(request)
 
