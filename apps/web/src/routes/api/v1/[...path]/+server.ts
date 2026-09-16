@@ -37,6 +37,10 @@ function responseHeaders(upstream: Response): Headers {
   return headers;
 }
 
+function isTimeoutError(reasonValue: unknown): boolean {
+  return reasonValue instanceof Error && reasonValue.name === 'TimeoutError';
+}
+
 const proxy: RequestHandler = async ({ params, request, url }) => {
   const origin = apiOrigin();
   if (!origin) {
@@ -76,7 +80,10 @@ const proxy: RequestHandler = async ({ params, request, url }) => {
       status: upstream.status,
       headers: responseHeaders(upstream)
     });
-  } catch {
+  } catch (reasonValue) {
+    if (isTimeoutError(reasonValue)) {
+      return json({ detail: 'Backend do piloto excedeu o tempo de resposta.' }, { status: 504 });
+    }
     return json({ detail: 'Backend do piloto indisponível.' }, { status: 502 });
   }
 };
