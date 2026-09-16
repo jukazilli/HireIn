@@ -194,13 +194,13 @@ def _match_structured_literal(
     any_options = _or_options(requirement)
     if any_options:
         for option in any_options:
-            evidence = _literal_evidence(option, kind, index)
-            if evidence:
+            option_evidence = _literal_evidence(option, kind, index)
+            if option_evidence:
                 return _result(
                     requirement,
                     RequirementMatchStatus.MATCHED,
                     f"Uma alternativa explícita do requisito foi confirmada: {option}.",
-                    evidence,
+                    option_evidence,
                 )
         return baseline
 
