@@ -17,7 +17,7 @@ from hirein_api.evals.schemas import (
     PilotReviewJobResponse,
 )
 from hirein_api.jobs.repository import get_job, list_jobs
-from hirein_api.match.service import calculate_job_match
+from hirein_api.match.current import calculate_job_match
 
 
 class EvaluationJobNotFoundError(Exception):
