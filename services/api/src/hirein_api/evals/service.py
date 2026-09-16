@@ -33,6 +33,7 @@ def _to_evaluation_response(row: PilotJobEvaluation) -> PilotEvaluationResponse:
     return PilotEvaluationResponse(
         job_id=row.job_id,
         relevance=row.relevance,
+        apply_intent=row.apply_intent,
         blocker_real=row.blocker_real,
         reason=row.reason,
         error_category=_category(row.error_category),
@@ -78,6 +79,7 @@ async def upsert_job_evaluation(
         session.add(row)
 
     row.relevance = payload.relevance
+    row.apply_intent = payload.apply_intent
     row.blocker_real = payload.blocker_real
     row.reason = payload.reason.strip() if payload.reason else None
     row.error_category = payload.error_category.value if payload.error_category else None
@@ -127,6 +129,7 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
                 company_name=job.company_name,
                 title=job.title,
                 relevance=sample.relevance,
+                apply_intent=evaluation.apply_intent,
                 score=sample.score,
                 coverage=sample.coverage,
                 band=sample.band,
