@@ -708,6 +708,7 @@ export interface components {
             /** Min Years */
             min_years?: number | null;
             required_education_status?: components["schemas"]["EducationStatus"] | null;
+            required_language_proficiency?: components["schemas"]["LanguageProficiency"] | null;
             required_level?: components["schemas"]["SkillLevel"] | null;
             /** Source Text */
             source_text?: string | null;
@@ -732,6 +733,7 @@ export interface components {
             /** Ordinal */
             ordinal: number;
             required_education_status: components["schemas"]["EducationStatus"] | null;
+            required_language_proficiency: components["schemas"]["LanguageProficiency"] | null;
             required_level: components["schemas"]["SkillLevel"] | null;
             /** Source Text */
             source_text: string | null;
