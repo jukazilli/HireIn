@@ -17,6 +17,10 @@ class PilotJobEvaluation(Base):
             "relevance >= 0 AND relevance <= 4",
             name="ck_pilot_job_evaluations_relevance",
         ),
+        CheckConstraint(
+            "apply_intent IS NULL OR (apply_intent >= 0 AND apply_intent <= 4)",
+            name="ck_pilot_job_evaluations_apply_intent",
+        ),
     )
 
     job_id: Mapped[uuid.UUID] = mapped_column(
@@ -24,7 +28,10 @@ class PilotJobEvaluation(Base):
         ForeignKey("job_postings.id", ondelete="CASCADE"),
         primary_key=True,
     )
+    # Historical rows used `relevance` as a general relevance label. From Blind Holdout #4
+    # onward the same field is the human Professional Fit label used by ranking evals.
     relevance: Mapped[int] = mapped_column(Integer, nullable=False)
+    apply_intent: Mapped[int | None] = mapped_column(Integer, nullable=True)
     blocker_real: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     reason: Mapped[str | None] = mapped_column(Text)
     error_category: Mapped[str | None] = mapped_column(String(64))
