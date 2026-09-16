@@ -132,8 +132,8 @@ def calculate_match(page: Page) -> None:
     expect(job_button).to_have_count(1)
     job_button.click()
 
-    expect(page.get_by_text("Cobertura da análise", exact=True)).to_be_visible()
-    expect(page.get_by_text("Score explicável", exact=True)).to_be_visible()
+    expect(page.get_by_text("Confiança da análise", exact=True)).to_be_visible()
+    expect(page.get_by_text("Aderência entre evidências avaliadas", exact=True)).to_be_visible()
 
 
 def assert_match_api(page: Page, job_id: str) -> None:
