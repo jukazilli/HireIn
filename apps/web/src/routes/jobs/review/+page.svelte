@@ -4,7 +4,6 @@
     api,
     type EvaluationErrorCategory,
     type JobMatch,
-    type PilotEvalReport,
     type PilotEvaluationUpsert,
     type PilotReviewJob
   } from '$lib/api';
@@ -29,7 +28,6 @@
   let jobs: PilotReviewJob[] = [];
   let selectedJob: PilotReviewJob | null = null;
   let match: JobMatch | null = null;
-  let report: PilotEvalReport | null = null;
   let loading = true;
   let loadingMatch = false;
   let saving = false;
@@ -41,6 +39,8 @@
   let reason = '';
   let errorCategory: EvaluationErrorCategory | '' = '';
 
+  const matchCache = new Map<string, JobMatch>();
+
   $: reviewedCount = jobs.filter((job) => job.evaluation).length;
 
   function fillEvaluation(job: PilotReviewJob) {
@@ -51,14 +51,11 @@
   }
 
   async function loadJobs() { jobs = await api.listReviewJobs(); }
-  async function loadReport() { report = await api.getEvalReport(); }
 
   async function refresh() {
     error = '';
     try {
       await loadJobs();
-      if (jobs.some((job) => job.evaluation)) await loadReport();
-      else report = null;
     } catch (reasonValue) {
       error = reasonValue instanceof Error ? reasonValue.message : 'Não foi possível carregar o piloto.';
     } finally {
@@ -66,26 +63,44 @@
     }
   }
 
-  async function selectJob(job: PilotReviewJob) {
+  async function loadMatchForJob(jobId: string, failureMessage: string) {
+    const cached = matchCache.get(jobId);
+    if (cached) {
+      if (selectedJob?.job_id === jobId) {
+        match = cached;
+        loadingMatch = false;
+      }
+      return;
+    }
+
+    if (selectedJob?.job_id === jobId) loadingMatch = true;
+    try {
+      const nextMatch = await api.getJobMatch(jobId);
+      matchCache.set(jobId, nextMatch);
+      if (selectedJob?.job_id === jobId) match = nextMatch;
+    } catch (reasonValue) {
+      if (selectedJob?.job_id === jobId) {
+        error = reasonValue instanceof Error ? reasonValue.message : failureMessage;
+      }
+    } finally {
+      if (selectedJob?.job_id === jobId) loadingMatch = false;
+    }
+  }
+
+  function selectJob(job: PilotReviewJob) {
     selectedJob = job; fillEvaluation(job); match = null; error = ''; message = '';
     if (!job.evaluation) {
       loadingMatch = false;
       return;
     }
-    loadingMatch = true;
-    try {
-      match = await api.getJobMatch(job.job_id);
-    } catch (reasonValue) {
-      error = reasonValue instanceof Error ? reasonValue.message : 'Não foi possível calcular o Match.';
-    } finally {
-      loadingMatch = false;
-    }
+    void loadMatchForJob(job.job_id, 'Não foi possível calcular o Match.');
   }
 
   async function saveEvaluation() {
     if (!selectedJob || relevance === null) return;
     const jobId = selectedJob.job_id;
     saving = true; error = ''; message = '';
+    let savedSuccessfully = false;
     try {
       const payload: PilotEvaluationUpsert = {
         relevance,
@@ -98,25 +113,22 @@
         job.job_id === jobId ? { ...job, evaluation: saved } : job
       );
       selectedJob = jobs.find((job) => job.job_id === jobId) ?? selectedJob;
-      message = 'Sua avaliação foi salva. Agora o Match pode ser revelado sem influenciar sua nota inicial.';
-      await loadReport();
-      loadingMatch = true;
-      try {
-        match = await api.getJobMatch(jobId);
-      } catch (reasonValue) {
-        error = reasonValue instanceof Error ? reasonValue.message : 'A avaliação foi salva, mas não foi possível revelar o Match.';
-      } finally {
-        loadingMatch = false;
-      }
+      matchCache.delete(jobId);
+      message = 'Sua avaliação foi salva. O Match está sendo revelado sem bloquear sua navegação.';
+      savedSuccessfully = true;
     } catch (reasonValue) {
       error = reasonValue instanceof Error ? reasonValue.message : 'Não foi possível salvar a avaliação.';
     } finally {
       saving = false;
     }
-  }
 
-  const percent = (value: number) => `${Math.round(value * 100)}%`;
-  const coverage = (value: number) => `${Math.round(value)}%`;
+    if (savedSuccessfully) {
+      void loadMatchForJob(
+        jobId,
+        'A avaliação foi salva, mas não foi possível revelar o Match.'
+      );
+    }
+  }
 
   onMount(refresh);
 </script>
@@ -142,16 +154,10 @@
     </aside>
   </section>
 
-  {#if report}
-    <section class="benchmark-line" aria-label="Sinais atuais do benchmark">
-      <div><span>Recall@5</span><strong>{percent(report.metrics.recall_at_5)}</strong></div>
-      <div><span>NDCG@5</span><strong>{percent(report.metrics.ndcg_at_5)}</strong></div>
-      <div><span>Cobertura média</span><strong>{coverage(report.metrics.average_coverage)}</strong></div>
-      <p>{report.metrics.sample_count} avaliações · {report.metrics.relevant_count} vagas boas ou excelentes</p>
-    </section>
-  {:else}
-    <div class="status-notice benchmark-note">O benchmark aparece depois da primeira avaliação. O smoke test começa com 5 vagas; a decisão técnica vem entre 30 e 50.</div>
-  {/if}
+  <div class="status-notice benchmark-note">
+    O benchmark agregado será calculado ao concluir o lote. Durante a revisão ele fica fora do caminho de
+    salvamento para manter a navegação rápida e evitar interferência na sua avaliação.
+  </div>
 
   {#if error}<div class="status-notice error message-space" aria-live="polite">{error}</div>{/if}
   {#if message}<div class="status-notice success message-space" aria-live="polite">{message}</div>{/if}
@@ -291,11 +297,6 @@
 </main>
 
 <style>
-  .benchmark-line { display: flex; align-items: center; gap: 1.35rem; margin-bottom: 1rem; padding: .85rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  .benchmark-line > div { display: flex; gap: .4rem; align-items: baseline; }
-  .benchmark-line span { color: var(--text-muted); font-size: .75rem; }
-  .benchmark-line strong { font-size: .92rem; }
-  .benchmark-line p { margin: 0 0 0 auto; color: var(--text-muted); font-size: .76rem; }
   .benchmark-note { margin-bottom: 1rem; }
   .message-space { margin-bottom: 1rem; }
   .review-workspace { grid-template-columns: minmax(300px, .8fr) minmax(0, 1.5fr); }
@@ -336,8 +337,6 @@
   .review-fields { margin-top: 1rem; }
   .save-review { margin-bottom: 0; }
   @media (max-width: 900px) {
-    .benchmark-line { flex-wrap: wrap; }
-    .benchmark-line p { width: 100%; margin-left: 0; }
     .queue-panel { max-height: none; }
     .match-readout { grid-template-columns: repeat(2, 1fr); }
     .readout-item:nth-child(3) { border-left: 0; }

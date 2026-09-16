@@ -172,14 +172,12 @@ def save_human_review(page: Page) -> None:
     )
     page.get_by_role("button", name="Salvar e revelar Match").click()
 
-    expect(
-        page.get_by_text(
-            "Sua avaliação foi salva. Agora o Match pode ser revelado sem influenciar sua nota inicial."
-        )
-    ).to_be_visible()
+    expect(page.get_by_text(re.compile(r"^Sua avaliação foi salva\."))).to_be_visible()
     expect(page.get_by_text("Cobertura", exact=True)).to_be_visible()
     expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_be_visible()
-    expect(page.get_by_text("Recall@5", exact=True)).to_be_visible()
+    expect(
+        page.get_by_text(re.compile(r"^O benchmark agregado será calculado ao concluir o lote\."))
+    ).to_be_visible()
 
     page.reload(wait_until="domcontentloaded")
     queue_button = page.get_by_role("button").filter(has_text=COMPANY_NAME)
