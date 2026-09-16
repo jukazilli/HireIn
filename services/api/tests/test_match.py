@@ -139,6 +139,8 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "unconfirmed_candidate_data_excluded",
         "score_is_not_hiring_probability",
         "preference_score_requires_50pct_coverage",
+        "language_proficiency_matching_enabled",
+        "confirmed_domain_evidence_bridge_enabled",
     ]
 
 
