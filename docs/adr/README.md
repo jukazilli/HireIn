@@ -35,6 +35,7 @@ Cada ADR deve registrar:
 7. [ADR-0007 — Fila baseada em PostgreSQL no piloto](0007-postgres-job-queue.md)
 8. [ADR-0008 — Contratos de API gerados a partir de OpenAPI](0008-openapi-contracts.md)
 9. [ADR-0009 — Piloto privado single-user na nuvem](0009-private-cloud-single-user-pilot.md)
+10. [ADR-0010 — Autenticação dedicada para ingestão de vagas](0010-job-search-ingestion-auth.md)
 
 ## Regra de governança
 
