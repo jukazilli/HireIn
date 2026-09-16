@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from hirein_api.jobs.domain import RequirementImportance, RequirementKind
 from hirein_api.jobs.models import JobRequirement
 from hirein_api.match.domain import RequirementMatchStatus
-from hirein_api.match.service import _result
+from hirein_api.match.service import _evidence, _result
 from hirein_api.match.service_v14 import (
     _downgrade_unproven_gap,
     _match_education_requirement,
@@ -210,12 +210,12 @@ def test_absence_without_negative_evidence_becomes_unknown_not_gap() -> None:
 def test_gap_with_confirmed_counter_evidence_is_preserved() -> None:
     requirement = _requirement(RequirementKind.EDUCATION, "Graduação completa")
     evidence = [
-        SimpleNamespace(
-            entity_type="EDUCATION",
-            entity_id=uuid.uuid4(),
-            value="Engenharia de Software",
-            source_type="USER_CONFIRMED",
-            detail="IN_PROGRESS",
+        _evidence(
+            "EDUCATION",
+            uuid.uuid4(),
+            "Engenharia de Software",
+            "USER_CONFIRMED",
+            "IN_PROGRESS",
         )
     ]
     baseline = _result(
