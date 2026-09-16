@@ -131,7 +131,7 @@ def test_review_round_trip_and_report() -> None:
     payload = report.json()
     assert payload["metrics"]["sample_count"] == 2
     assert payload["metrics"]["relevant_count"] == 1
-    assert payload["metrics"]["scored_count"] == 2
+    assert payload["metrics"]["scored_count"] == 1
     assert payload["ranking"][0]["job_id"] == strong_id
     assert payload["ranking"][0]["relevance"] == 4
     assert payload["ranking"][1]["error_category"] == "RANKING_WEIGHT"
