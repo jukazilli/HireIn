@@ -286,7 +286,10 @@ def _match_experience_requirement(
                     return _result(
                         requirement,
                         RequirementMatchStatus.GAP,
-                        "A experiência foi encontrada, mas o tempo confirmado é inferior ao mínimo explícito.",
+                        (
+                            "A experiência foi encontrada, mas o tempo confirmado é "
+                            "inferior ao mínimo explícito."
+                        ),
                         evidence,
                     )
 
@@ -312,7 +315,10 @@ def _match_experience_requirement(
                     return _result(
                         requirement,
                         RequirementMatchStatus.UNKNOWN,
-                        "Há evidência textual da experiência, mas não há duração confirmada para validar o mínimo.",
+                        (
+                            "Há evidência textual da experiência, mas não há duração "
+                            "confirmada para validar o mínimo."
+                        ),
                         evidence,
                     )
                 return _result(
@@ -418,7 +424,10 @@ def _match_education_requirement(
         return _result(
             requirement,
             RequirementMatchStatus.GAP,
-            "A área de formação é compatível, mas o status confirmado não atende ao mínimo explícito.",
+            (
+                "A área de formação é compatível, mas o status confirmado não atende "
+                "ao mínimo explícito."
+            ),
             evidence,
         )
 
@@ -444,7 +453,10 @@ def _downgrade_unproven_gap(
     return _result(
         requirement,
         RequirementMatchStatus.UNKNOWN,
-        "Não foi encontrada evidência confirmada suficiente; ausência no perfil não é tratada como prova de lacuna.",
+        (
+            "Não foi encontrada evidência confirmada suficiente; ausência no perfil não é "
+            "tratada como prova de lacuna."
+        ),
     )
 
 
