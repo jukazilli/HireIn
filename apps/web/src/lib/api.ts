@@ -76,8 +76,9 @@ async function fetchApi(path: string, init?: RequestInit): Promise<Response> {
 
   for (let attempt = 0; ; attempt += 1) {
     const response = await fetch(`${API_BASE}${path}`, init);
+    const retryDelay = retryDelays[attempt];
 
-    if (attempt >= retryDelays.length || response.status !== 502) {
+    if (retryDelay === undefined || response.status !== 502) {
       return response;
     }
 
@@ -86,7 +87,7 @@ async function fetchApi(path: string, init?: RequestInit): Promise<Response> {
       return response;
     }
 
-    await sleep(retryDelays[attempt]);
+    await sleep(retryDelay);
   }
 }
 
