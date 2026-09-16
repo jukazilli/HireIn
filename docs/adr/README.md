@@ -36,6 +36,7 @@ Cada ADR deve registrar:
 8. [ADR-0008 — Contratos de API gerados a partir de OpenAPI](0008-openapi-contracts.md)
 9. [ADR-0009 — Piloto privado single-user na nuvem](0009-private-cloud-single-user-pilot.md)
 10. [ADR-0010 — Autenticação dedicada para ingestão de vagas](0010-job-search-ingestion-auth.md)
+11. [ADR-0011 — Uptime externo e keep-alive controlado no piloto](0011-uptime-keepalive-pilot.md)
 
 ## Regra de governança
 
