@@ -15,12 +15,12 @@ from hirein_api.jobs.service import (
     list_job_postings,
     update_job_posting,
 )
-from hirein_api.match.schemas import JobMatchResponse
-from hirein_api.match.service_v12 import (
+from hirein_api.match.current import (
     MatchJobNotFoundError,
     MatchProfileNotFoundError,
     calculate_job_match,
 )
+from hirein_api.match.schemas import JobMatchResponse
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 SessionDep = Annotated[AsyncSession, Depends(get_session)]

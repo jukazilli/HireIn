@@ -16,6 +16,7 @@ from hirein_api.jobs.domain import (
 from hirein_api.profile.domain import (
     ContractType,
     EducationStatus,
+    LanguageProficiency,
     Seniority,
     SkillLevel,
     WorkModel,
@@ -29,6 +30,7 @@ class JobRequirementInput(BaseModel):
     min_years: float | None = Field(default=None, ge=0, le=99)
     required_level: SkillLevel | None = None
     required_education_status: EducationStatus | None = None
+    required_language_proficiency: LanguageProficiency | None = None
     context_qualifier: str | None = Field(default=None, max_length=240)
     source_text: str | None = None
 
@@ -45,6 +47,13 @@ class JobRequirementInput(BaseModel):
         ):
             raise ValueError(
                 "required_education_status is only valid for EDUCATION requirements"
+            )
+        if (
+            self.required_language_proficiency is not None
+            and self.kind != RequirementKind.LANGUAGE
+        ):
+            raise ValueError(
+                "required_language_proficiency is only valid for LANGUAGE requirements"
             )
         return self
 
@@ -115,6 +124,7 @@ class JobRequirementResponse(BaseModel):
     min_years: float | None
     required_level: SkillLevel | None
     required_education_status: EducationStatus | None
+    required_language_proficiency: LanguageProficiency | None
     context_qualifier: str | None
     source_text: str | None
     ordinal: int

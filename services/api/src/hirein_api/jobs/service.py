@@ -29,6 +29,7 @@ from hirein_api.jobs.schemas import (
 from hirein_api.profile.domain import (
     ContractType,
     EducationStatus,
+    LanguageProficiency,
     Seniority,
     SkillLevel,
     WorkModel,
@@ -191,6 +192,11 @@ async def _apply_payload(
                     if requirement_input.required_education_status
                     else None
                 ),
+                required_language_proficiency=(
+                    requirement_input.required_language_proficiency.value
+                    if requirement_input.required_language_proficiency
+                    else None
+                ),
                 context_qualifier=(
                     requirement_input.context_qualifier.strip()
                     if requirement_input.context_qualifier
@@ -246,6 +252,11 @@ def _to_response(job: JobPosting) -> JobPostingResponse:
                 required_education_status=(
                     EducationStatus(requirement.required_education_status)
                     if requirement.required_education_status
+                    else None
+                ),
+                required_language_proficiency=(
+                    LanguageProficiency(requirement.required_language_proficiency)
+                    if requirement.required_language_proficiency
                     else None
                 ),
                 context_qualifier=requirement.context_qualifier,
