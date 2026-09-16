@@ -1,0 +1,3 @@
+POST /api/v1/jobs
+X-HireIn-Ingestion-Token: <server-side secret>
+Content-Type: application/json
