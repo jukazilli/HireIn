@@ -95,6 +95,7 @@ class JobRequirement(Base):
     min_years: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
     required_level: Mapped[str | None] = mapped_column(String(32))
     required_education_status: Mapped[str | None] = mapped_column(String(32))
+    required_language_proficiency: Mapped[str | None] = mapped_column(String(32))
     context_qualifier: Mapped[str | None] = mapped_column(String(240))
     source_text: Mapped[str | None] = mapped_column(Text)
     ordinal: Mapped[int] = mapped_column(nullable=False, default=0)
