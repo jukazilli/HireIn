@@ -125,13 +125,15 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
     assert response.status_code == 200
     result = response.json()
     assert result["requirement_score"] == 75
-    assert result["evaluation_coverage"] == 100
+    assert result["evaluation_coverage"] == 75
     assert result["preference_score"] == 100
     assert result["score"] == 79
     assert result["band"] == "GOOD"
     assert result["matched_required"] == 1
-    assert result["missing_preferred"] == 1
+    assert result["missing_preferred"] == 0
+    assert result["unknown_requirements"] == 1
     assert result["requirement_results"][0]["status"] == "MATCHED"
+    assert result["requirement_results"][1]["status"] == "UNKNOWN"
     assert result["requirement_results"][0]["evidence"][0]["source_type"] == "USER_CONFIRMED"
     assert result["warnings"] == [
         "safe_alias_matching_only",
@@ -141,10 +143,14 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "preference_score_requires_50pct_coverage",
         "language_proficiency_matching_enabled",
         "confirmed_domain_evidence_bridge_enabled",
+        "structured_any_all_evidence_enabled",
+        "absence_of_evidence_is_not_automatic_gap",
+        "experience_description_evidence_enabled",
+        "unknown_requirements_count_as_unresolved_risk",
     ]
 
 
-def test_missing_required_is_gap_when_confirmed_data_is_available() -> None:
+def test_missing_required_without_negative_evidence_is_unknown() -> None:
     profile = _profile_payload()
     job = _job_payload()
     job["requirements"] = [
@@ -157,10 +163,12 @@ def test_missing_required_is_gap_when_confirmed_data_is_available() -> None:
         response = client.get(f"/api/v1/jobs/{created.json()['id']}/match")
 
     result = response.json()
-    assert result["evaluation_coverage"] == 100
+    assert result["evaluation_coverage"] == 0
     assert result["requirement_score"] == 0
-    assert result["missing_required"] == 1
-    assert result["requirement_results"][0]["status"] == "GAP"
+    assert result["score"] is None
+    assert result["missing_required"] == 0
+    assert result["unknown_requirements"] == 1
+    assert result["requirement_results"][0]["status"] == "UNKNOWN"
 
 
 def test_ai_draft_does_not_increase_score() -> None:
