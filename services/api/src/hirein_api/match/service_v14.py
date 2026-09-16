@@ -10,8 +10,18 @@ from hirein_api.jobs.domain import RequirementImportance, RequirementKind
 from hirein_api.jobs.models import JobRequirement
 from hirein_api.jobs.repository import get_job
 from hirein_api.match.domain import MatchBand, RequirementMatchStatus
-from hirein_api.match.schemas import JobMatchResponse, RequirementMatchResponse
-from hirein_api.match.service import _band, _build_candidate_index, _evidence, _result
+from hirein_api.match.schemas import (
+    JobMatchResponse,
+    MatchEvidenceResponse,
+    RequirementMatchResponse,
+)
+from hirein_api.match.service import (
+    CandidateIndex,
+    _band,
+    _build_candidate_index,
+    _evidence,
+    _result,
+)
 from hirein_api.match.service_v11 import (
     MatchJobNotFoundError,
     MatchProfileNotFoundError,
@@ -22,15 +32,16 @@ from hirein_api.match.service_v12 import (
     LOCATION_BLOCKER_WARNING,
     MINIMUM_COVERAGE,
     UNKNOWN_REQUIRED_WARNING,
-    _score_requirements_v12,
 )
 from hirein_api.match.service_v13 import calculate_job_match as calculate_job_match_v13
 from hirein_api.profile.domain import EducationStatus, FactKind
+from hirein_api.profile.models import CandidateExperience
 from hirein_api.profile.repository import get_primary_profile
 
 STRUCTURED_EVIDENCE_WARNING = "structured_any_all_evidence_enabled"
 UNCERTAINTY_WARNING = "absence_of_evidence_is_not_automatic_gap"
 EXPERIENCE_DESCRIPTION_WARNING = "experience_description_evidence_enabled"
+UNCERTAINTY_COVERAGE_WARNING = "required_unknowns_count_as_unresolved_coverage"
 
 _EVIDENCE_KINDS = {
     RequirementKind.SKILL,
@@ -116,16 +127,20 @@ def _and_options(requirement: JobRequirement) -> list[str]:
     return parts
 
 
-def _literal_evidence(term: str, kind: RequirementKind, index: object) -> list[object]:
-    matches: list[object] = []
+def _literal_evidence(
+    term: str,
+    kind: RequirementKind,
+    index: CandidateIndex,
+) -> list[MatchEvidenceResponse]:
+    matches: list[MatchEvidenceResponse] = []
 
     if kind in {RequirementKind.SKILL, RequirementKind.TOOL, RequirementKind.DOMAIN}:
-        for skill in index.skills:  # type: ignore[attr-defined]
+        for skill in index.skills:
             if _either_contains(skill.name, term):
                 matches.append(_evidence("SKILL", skill.id, skill.name, skill.source_type))
 
     if kind in {RequirementKind.TOOL, RequirementKind.DOMAIN, RequirementKind.RESPONSIBILITY}:
-        for fact in index.facts:  # type: ignore[attr-defined]
+        for fact in index.facts:
             fact_kind = FactKind(fact.kind)
             if kind == RequirementKind.TOOL and fact_kind != FactKind.TOOL:
                 continue
@@ -143,7 +158,7 @@ def _literal_evidence(term: str, kind: RequirementKind, index: object) -> list[o
                 )
 
     if kind == RequirementKind.DOMAIN:
-        for experience in index.experiences:  # type: ignore[attr-defined]
+        for experience in index.experiences:
             if _contains_term(experience.role_title, term) or _contains_term(
                 experience.description, term
             ):
@@ -163,7 +178,7 @@ def _literal_evidence(term: str, kind: RequirementKind, index: object) -> list[o
 def _match_structured_literal(
     requirement: JobRequirement,
     baseline: RequirementMatchResponse,
-    index: object,
+    index: CandidateIndex,
 ) -> RequirementMatchResponse:
     kind = RequirementKind(requirement.kind)
     if kind not in {
@@ -191,7 +206,7 @@ def _match_structured_literal(
 
     all_options = _and_options(requirement)
     if all_options:
-        evidence: list[object] = []
+        evidence: list[MatchEvidenceResponse] = []
         missing: list[str] = []
         for option in all_options:
             option_evidence = _literal_evidence(option, kind, index)
@@ -228,10 +243,9 @@ def _match_structured_literal(
     return baseline
 
 
-def _experience_years(experience: object) -> float:
-    start = experience.start_date  # type: ignore[attr-defined]
-    end = experience.end_date or date.today()  # type: ignore[attr-defined]
-    return max((end - start).days / 365.25, 0.0)
+def _experience_years(experience: CandidateExperience) -> float:
+    end = experience.end_date or date.today()
+    return max((end - experience.start_date).days / 365.25, 0.0)
 
 
 def _experience_terms(requirement: JobRequirement) -> list[str]:
@@ -242,7 +256,7 @@ def _experience_terms(requirement: JobRequirement) -> list[str]:
 def _match_experience_requirement(
     requirement: JobRequirement,
     baseline: RequirementMatchResponse,
-    index: object,
+    index: CandidateIndex,
 ) -> RequirementMatchResponse:
     if RequirementKind(requirement.kind) != RequirementKind.EXPERIENCE:
         return baseline
@@ -250,7 +264,7 @@ def _match_experience_requirement(
         return baseline
 
     for term in _experience_terms(requirement):
-        for experience in index.experiences:  # type: ignore[attr-defined]
+        for experience in index.experiences:
             if not (
                 _either_contains(experience.role_title, term)
                 or _contains_term(experience.description, term)
@@ -283,7 +297,7 @@ def _match_experience_requirement(
                 evidence,
             )
 
-        for fact in index.facts:  # type: ignore[attr-defined]
+        for fact in index.facts:
             if FactKind(fact.kind) not in {
                 FactKind.RESPONSIBILITY,
                 FactKind.PROJECT,
@@ -291,18 +305,21 @@ def _match_experience_requirement(
             }:
                 continue
             if _contains_term(fact.value, term):
+                evidence = [
+                    _evidence("FACT", fact.id, fact.value, fact.source_type, fact.kind)
+                ]
                 if requirement.min_years is not None:
                     return _result(
                         requirement,
                         RequirementMatchStatus.UNKNOWN,
                         "Há evidência textual da experiência, mas não há duração confirmada para validar o mínimo.",
-                        [_evidence("FACT", fact.id, fact.value, fact.source_type, fact.kind)],
+                        evidence,
                     )
                 return _result(
                     requirement,
                     RequirementMatchStatus.MATCHED,
                     "Experiência sustentada por fato profissional confirmado.",
-                    [_evidence("FACT", fact.id, fact.value, fact.source_type, fact.kind)],
+                    evidence,
                 )
 
     return baseline
@@ -339,14 +356,14 @@ def _generic_education_status_match(requirement: JobRequirement, status: str) ->
 def _match_education_requirement(
     requirement: JobRequirement,
     baseline: RequirementMatchResponse,
-    index: object,
+    index: CandidateIndex,
 ) -> RequirementMatchResponse:
     if RequirementKind(requirement.kind) != RequirementKind.EDUCATION:
         return baseline
     if baseline.status == RequirementMatchStatus.MATCHED:
         return baseline
 
-    education = list(index.education)  # type: ignore[attr-defined]
+    education = list(index.education)
     if not education:
         return _result(
             requirement,
@@ -394,14 +411,16 @@ def _match_education_requirement(
             matching.status,
         )
     ]
-    if requirement.required_education_status is not None:
-        if matching.status != requirement.required_education_status:
-            return _result(
-                requirement,
-                RequirementMatchStatus.GAP,
-                "A área de formação é compatível, mas o status confirmado não atende ao mínimo explícito.",
-                evidence,
-            )
+    if (
+        requirement.required_education_status is not None
+        and matching.status != requirement.required_education_status
+    ):
+        return _result(
+            requirement,
+            RequirementMatchStatus.GAP,
+            "A área de formação é compatível, mas o status confirmado não atende ao mínimo explícito.",
+            evidence,
+        )
 
     return _result(
         requirement,
@@ -432,13 +451,46 @@ def _downgrade_unproven_gap(
 def _enhance_requirement_v14(
     requirement: JobRequirement,
     baseline: RequirementMatchResponse,
-    index: object,
+    index: CandidateIndex,
 ) -> RequirementMatchResponse:
     result = _match_education_requirement(requirement, baseline, index)
     result = _match_experience_requirement(requirement, result, index)
     result = _match_structured_literal(requirement, result, index)
     result = _apply_structured_qualifiers(requirement, result, index)
     return _downgrade_unproven_gap(requirement, result)
+
+
+def _score_requirements_v14(
+    results: list[RequirementMatchResponse],
+) -> tuple[int | None, int, int]:
+    total_weight = sum(
+        item.weight
+        for item in results
+        if item.importance != RequirementImportance.INFO
+    )
+    evaluated_weight = sum(
+        item.weight
+        for item in results
+        if item.status in {RequirementMatchStatus.MATCHED, RequirementMatchStatus.GAP}
+    )
+    matched_weight = sum(
+        item.weight for item in results if item.status == RequirementMatchStatus.MATCHED
+    )
+    unknown_required_weight = sum(
+        item.weight
+        for item in results
+        if item.importance == RequirementImportance.REQUIRED
+        and item.status == RequirementMatchStatus.UNKNOWN
+    )
+
+    resolvable_weight = evaluated_weight + unknown_required_weight
+    coverage = int(round((resolvable_weight / total_weight) * 100)) if total_weight else 0
+    score = (
+        int(round((matched_weight / resolvable_weight) * 100))
+        if resolvable_weight
+        else None
+    )
+    return score, coverage, unknown_required_weight
 
 
 async def calculate_job_match(session: AsyncSession, job_id: uuid.UUID) -> JobMatchResponse:
@@ -457,7 +509,7 @@ async def calculate_job_match(session: AsyncSession, job_id: uuid.UUID) -> JobMa
         for requirement in job.requirements
     ]
 
-    requirement_score, coverage, unknown_required_weight = _score_requirements_v12(
+    requirement_score, coverage, unknown_required_weight = _score_requirements_v14(
         requirement_results
     )
 
@@ -466,6 +518,7 @@ async def calculate_job_match(session: AsyncSession, job_id: uuid.UUID) -> JobMa
         STRUCTURED_EVIDENCE_WARNING,
         UNCERTAINTY_WARNING,
         EXPERIENCE_DESCRIPTION_WARNING,
+        UNCERTAINTY_COVERAGE_WARNING,
     ):
         if warning not in warnings:
             warnings.append(warning)
