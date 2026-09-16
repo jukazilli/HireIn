@@ -50,6 +50,8 @@ from hirein_api.match.service_v14 import (
     _match_education_requirement,
     _match_experience_requirement,
     _match_structured_literal,
+)
+from hirein_api.match.service_v14 import (
     calculate_job_match as calculate_job_match_v14,
 )
 from hirein_api.profile.domain import EducationStatus, WorkModel
