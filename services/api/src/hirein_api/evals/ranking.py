@@ -4,6 +4,8 @@ import math
 from dataclasses import dataclass
 from statistics import mean
 
+NEUTRAL_FIT_PRIOR = 50.0
+
 
 @dataclass(frozen=True)
 class RankingSample:
@@ -14,6 +16,7 @@ class RankingSample:
     band: str
     blocker_real: bool = False
     reason: str | None = None
+    algorithm_blocked: bool = False
 
 
 @dataclass(frozen=True)
@@ -42,14 +45,30 @@ def validate_samples(samples: list[RankingSample]) -> None:
             raise ValueError("evaluation coverage must be between 0 and 100")
 
 
+def ranking_signal(sample: RankingSample) -> float:
+    """Return confidence-adjusted fit without punishing missing evidence.
+
+    Low-confidence scores shrink toward a neutral 50-point prior. A missing score is
+    therefore neutral instead of automatically worse than a known 0. Explicit
+    algorithmic blockers remain at the bottom independent of evidence coverage.
+    """
+
+    if sample.algorithm_blocked:
+        return -1.0
+
+    fit = float(sample.score) if sample.score is not None else NEUTRAL_FIT_PRIOR
+    confidence = sample.coverage / 100
+    return (fit * confidence) + (NEUTRAL_FIT_PRIOR * (1 - confidence))
+
+
 def rank_samples(samples: list[RankingSample]) -> list[RankingSample]:
     validate_samples(samples)
     return sorted(
         samples,
         key=lambda sample: (
-            sample.score is not None,
-            sample.score if sample.score is not None else -1,
+            ranking_signal(sample),
             sample.coverage,
+            sample.score if sample.score is not None else NEUTRAL_FIT_PRIOR,
             sample.key,
         ),
         reverse=True,
