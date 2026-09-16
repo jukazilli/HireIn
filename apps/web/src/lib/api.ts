@@ -1,6 +1,8 @@
 import type { components } from '../../../../packages/generated-client/src/schema';
 
 const API_BASE = '/api/v1';
+const COLD_START_RETRY_DELAYS_MS = [1500, 3000] as const;
+const BACKEND_UNAVAILABLE_DETAIL = 'Backend do piloto indisponível.';
 
 type Schemas = components['schemas'];
 
@@ -50,8 +52,47 @@ function errorMessage(body: unknown, status: number) {
   return `A API respondeu com status ${status}.`;
 }
 
+function isReadRequest(init?: RequestInit): boolean {
+  const method = (init?.method ?? 'GET').toUpperCase();
+  return method === 'GET' || method === 'HEAD';
+}
+
+function isColdStartResponse(status: number, body: unknown): boolean {
+  return (
+    status === 502 &&
+    typeof body === 'object' &&
+    body !== null &&
+    'detail' in body &&
+    body.detail === BACKEND_UNAVAILABLE_DETAIL
+  );
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function fetchApi(path: string, init?: RequestInit): Promise<Response> {
+  const retryDelays = isReadRequest(init) ? COLD_START_RETRY_DELAYS_MS : [];
+
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetch(`${API_BASE}${path}`, init);
+    const retryDelay = retryDelays[attempt];
+
+    if (retryDelay === undefined || response.status !== 502) {
+      return response;
+    }
+
+    const body = await response.clone().json().catch(() => null);
+    if (!isColdStartResponse(response.status, body)) {
+      return response;
+    }
+
+    await sleep(retryDelay);
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, init);
+  const response = await fetchApi(path, init);
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
@@ -62,7 +103,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 async function requestOptional<T>(path: string): Promise<T | null> {
-  const response = await fetch(`${API_BASE}${path}`);
+  const response = await fetchApi(path);
   if (response.status === 404) return null;
 
   if (!response.ok) {
