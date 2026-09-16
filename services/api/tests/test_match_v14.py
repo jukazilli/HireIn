@@ -230,7 +230,7 @@ def test_gap_with_confirmed_counter_evidence_is_preserved() -> None:
     assert result.status == RequirementMatchStatus.GAP
 
 
-def test_required_unknowns_are_unresolved_coverage_but_not_positive_evidence() -> None:
+def test_required_unknowns_reduce_coverage_and_do_not_add_positive_evidence() -> None:
     matched_requirement = _requirement(RequirementKind.SKILL, "Gestão de projetos")
     unknown_requirement = _requirement(RequirementKind.SKILL, "Comunicação")
     matched = _result(
@@ -247,5 +247,5 @@ def test_required_unknowns_are_unresolved_coverage_but_not_positive_evidence() -
     score, coverage, unknown_required_weight = _score_requirements_v14([matched, unknown])
 
     assert score == 50
-    assert coverage == 100
+    assert coverage == 50
     assert unknown_required_weight == 3
