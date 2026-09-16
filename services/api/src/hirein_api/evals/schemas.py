@@ -9,7 +9,10 @@ from hirein_api.evals.domain import EvaluationErrorCategory
 
 
 class PilotEvaluationUpsert(BaseModel):
+    # Kept as `relevance` for backward compatibility with the existing eval dataset/API.
+    # Blind Holdout #4+ treats this label as Professional Fit.
     relevance: int = Field(ge=0, le=4)
+    apply_intent: int | None = Field(default=None, ge=0, le=4)
     blocker_real: bool = False
     reason: str | None = Field(default=None, max_length=2000)
     error_category: EvaluationErrorCategory | None = None
@@ -20,6 +23,7 @@ class PilotEvaluationResponse(BaseModel):
 
     job_id: uuid.UUID
     relevance: int
+    apply_intent: int | None
     blocker_real: bool
     reason: str | None
     error_category: EvaluationErrorCategory | None
@@ -55,6 +59,7 @@ class PilotEvalRankingItemResponse(BaseModel):
     company_name: str
     title: str
     relevance: int
+    apply_intent: int | None
     score: int | None
     coverage: int
     band: str
