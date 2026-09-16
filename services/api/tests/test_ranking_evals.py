@@ -9,6 +9,7 @@ from hirein_api.evals.ranking import (
     calculate_ranking_metrics,
     ndcg_at_k,
     rank_samples,
+    ranking_signal,
     recall_at_k,
 )
 
@@ -24,22 +25,66 @@ def _samples() -> list[RankingSample]:
     ]
 
 
-def test_rank_samples_puts_unscored_items_last() -> None:
+def test_rank_samples_treats_missing_score_as_neutral_uncertainty() -> None:
     ranked = rank_samples(_samples())
     assert [sample.key for sample in ranked] == [
         "job-a",
         "job-b",
         "job-c",
         "job-d",
-        "job-f",
         "job-e",
+        "job-f",
+    ]
+    assert ranking_signal(ranked[4]) == pytest.approx(50.0)
+
+
+def test_low_confidence_score_is_shrunk_toward_neutral_prior() -> None:
+    uncertain_high = RankingSample(
+        "uncertain-high",
+        relevance=0,
+        score=100,
+        coverage=20,
+        band="INSUFFICIENT_DATA",
+    )
+    known_zero = RankingSample(
+        "known-zero",
+        relevance=0,
+        score=0,
+        coverage=100,
+        band="LOW",
+    )
+
+    assert ranking_signal(uncertain_high) == pytest.approx(60.0)
+    assert ranking_signal(known_zero) == pytest.approx(0.0)
+
+
+def test_explicit_algorithm_blocker_stays_at_bottom() -> None:
+    blocked = RankingSample(
+        "blocked",
+        relevance=0,
+        score=100,
+        coverage=100,
+        band="STRONG",
+        algorithm_blocked=True,
+    )
+    unknown = RankingSample(
+        "unknown",
+        relevance=0,
+        score=None,
+        coverage=0,
+        band="INSUFFICIENT_DATA",
+    )
+
+    assert [sample.key for sample in rank_samples([blocked, unknown])] == [
+        "unknown",
+        "blocked",
     ]
 
 
 def test_recall_at_k_uses_human_relevance_threshold() -> None:
     ranked = rank_samples(_samples())
     assert recall_at_k(ranked, 2) == pytest.approx(1 / 3)
-    assert recall_at_k(ranked, 5) == pytest.approx(2 / 3)
+    assert recall_at_k(ranked, 5) == pytest.approx(1.0)
     assert recall_at_k(ranked, 10) == pytest.approx(1.0)
 
 
@@ -58,7 +103,7 @@ def test_metrics_report_coverage_and_ranking_quality() -> None:
     assert metrics.relevant_count == 3
     assert metrics.scored_count == 5
     assert metrics.average_coverage == pytest.approx(86.6666666667)
-    assert metrics.recall_at_5 == pytest.approx(2 / 3)
+    assert metrics.recall_at_5 == pytest.approx(1.0)
     assert metrics.recall_at_10 == pytest.approx(1.0)
     assert math.isclose(metrics.ndcg_at_5, ndcg_at_k(rank_samples(_samples()), 5))
 

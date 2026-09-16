@@ -18,6 +18,7 @@ from hirein_api.evals.schemas import (
 )
 from hirein_api.jobs.repository import get_job, list_jobs
 from hirein_api.match.current import calculate_job_match
+from hirein_api.match.service_v12 import LOCATION_BLOCKER_WARNING
 
 
 class EvaluationJobNotFoundError(Exception):
@@ -105,6 +106,7 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
                 band=match.band.value,
                 blocker_real=row.blocker_real,
                 reason=row.reason,
+                algorithm_blocked=LOCATION_BLOCKER_WARNING in match.warnings,
             )
         )
 

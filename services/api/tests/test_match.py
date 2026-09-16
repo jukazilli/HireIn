@@ -124,11 +124,11 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
 
     assert response.status_code == 200
     result = response.json()
-    assert result["requirement_score"] == 75
+    assert result["requirement_score"] == 100
     assert result["evaluation_coverage"] == 75
     assert result["preference_score"] == 100
-    assert result["score"] == 79
-    assert result["band"] == "GOOD"
+    assert result["score"] == 100
+    assert result["band"] == "STRONG"
     assert result["matched_required"] == 1
     assert result["missing_preferred"] == 0
     assert result["unknown_requirements"] == 1
@@ -147,6 +147,10 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "absence_of_evidence_is_not_automatic_gap",
         "experience_description_evidence_enabled",
         "unknown_requirements_count_as_unresolved_risk",
+        "fit_score_separated_from_evidence_confidence",
+        "safe_professional_concept_bridges_enabled",
+        "location_blocker_requires_explicit_presence",
+        "state_level_location_preferences_enabled",
     ]
 
 
@@ -164,7 +168,7 @@ def test_missing_required_without_negative_evidence_is_unknown() -> None:
 
     result = response.json()
     assert result["evaluation_coverage"] == 0
-    assert result["requirement_score"] == 0
+    assert result["requirement_score"] is None
     assert result["score"] is None
     assert result["missing_required"] == 0
     assert result["unknown_requirements"] == 1
