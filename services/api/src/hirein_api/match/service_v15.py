@@ -31,9 +31,9 @@ from hirein_api.match.service import (
     _result,
 )
 from hirein_api.match.service_v11 import (
-    MINIMUM_PREFERENCE_COVERAGE,
     MatchJobNotFoundError,
     MatchProfileNotFoundError,
+    _apply_structured_qualifiers,
     _canonical,
     _score_preferences_v11,
 )
@@ -43,14 +43,16 @@ from hirein_api.match.service_v12 import (
     UNKNOWN_REQUIRED_WARNING,
 )
 from hirein_api.match.service_v14 import (
+    _and_options,
     _contains_term,
     _downgrade_unproven_gap,
+    _experience_years,
     _match_education_requirement,
     _match_experience_requirement,
     _match_structured_literal,
     calculate_job_match as calculate_job_match_v14,
 )
-from hirein_api.profile.domain import EducationStatus, FactKind, WorkModel
+from hirein_api.profile.domain import EducationStatus, WorkModel
 from hirein_api.profile.models import CareerPreference
 from hirein_api.profile.repository import get_primary_profile
 
@@ -177,7 +179,9 @@ def _concept_evidence(index: CandidateIndex, concept: str) -> list[MatchEvidence
             )
 
     for experience in index.experiences:
-        if _has_any(experience.role_title, aliases) or _has_any(experience.description, aliases):
+        if _has_any(experience.role_title, aliases) or _has_any(
+            experience.description, aliases
+        ):
             evidence.append(
                 _evidence(
                     "EXPERIENCE",
@@ -192,6 +196,64 @@ def _concept_evidence(index: CandidateIndex, concept: str) -> list[MatchEvidence
     for item in evidence:
         unique[(item.entity_type, item.entity_id)] = item
     return list(unique.values())
+
+
+def _evidence_proves_min_years(
+    requirement: JobRequirement,
+    evidence: list[MatchEvidenceResponse],
+    index: CandidateIndex,
+) -> bool:
+    if requirement.min_years is None:
+        return True
+
+    minimum = float(requirement.min_years)
+    evidence_ids = {item.entity_id for item in evidence}
+
+    for skill in index.skills:
+        if (
+            skill.id in evidence_ids
+            and skill.years_experience is not None
+            and float(skill.years_experience) >= minimum
+        ):
+            return True
+
+    for experience in index.experiences:
+        if experience.id in evidence_ids and _experience_years(experience) >= minimum:
+            return True
+
+    return False
+
+
+def _concept_result(
+    requirement: JobRequirement,
+    reason: str,
+    evidence: list[MatchEvidenceResponse],
+    index: CandidateIndex,
+) -> RequirementMatchResponse:
+    if requirement.min_years is not None and not _evidence_proves_min_years(
+        requirement, evidence, index
+    ):
+        return _result(
+            requirement,
+            RequirementMatchStatus.UNKNOWN,
+            (
+                "Há evidência conceitual compatível, mas não há duração confirmada "
+                "suficiente para validar o mínimo explícito da vaga."
+            ),
+            evidence,
+        )
+
+    matched = _result(
+        requirement,
+        RequirementMatchStatus.MATCHED,
+        reason,
+        evidence,
+    )
+    return _apply_structured_qualifiers(requirement, matched, index)
+
+
+def _is_composite_and_requirement(requirement: JobRequirement) -> bool:
+    return bool(_and_options(requirement))
 
 
 def _match_safe_professional_concepts(
@@ -210,56 +272,64 @@ def _match_safe_professional_concepts(
     }:
         return baseline
 
+    # A ponte conceitual não pode satisfazer sozinha um requisito composto "A e B".
+    # Nesses casos o v1.4 continua exigindo evidência para cada componente.
+    if _is_composite_and_requirement(requirement):
+        return baseline
+
     if _concept_in_requirement(requirement, "implementation") and _concept_in_requirement(
         requirement, "system"
     ):
         implementation = _concept_evidence(index, "implementation")
         system = _concept_evidence(index, "system")
         if implementation and system:
-            return _result(
+            evidence = implementation[:2] + system[:2]
+            return _concept_result(
                 requirement,
-                RequirementMatchStatus.MATCHED,
                 (
                     "Implantação e contexto de sistemas/ERP foram confirmados por "
                     "evidências profissionais auditáveis."
                 ),
-                implementation[:2] + system[:2],
+                evidence,
+                index,
             )
 
     if _concept_in_requirement(requirement, "training"):
         training = _concept_evidence(index, "training")
         if training:
-            return _result(
+            return _concept_result(
                 requirement,
-                RequirementMatchStatus.MATCHED,
                 "Há evidência profissional confirmada de condução de treinamentos/capacitações.",
                 training[:3],
+                index,
             )
 
     if _concept_in_requirement(requirement, "requirements"):
         requirements = _concept_evidence(index, "requirements")
         if requirements:
-            return _result(
+            return _concept_result(
                 requirement,
-                RequirementMatchStatus.MATCHED,
                 "Há evidência confirmada de levantamento ou análise de requisitos.",
                 requirements[:3],
+                index,
             )
 
     if _concept_in_requirement(requirement, "project_management"):
         projects = _concept_evidence(index, "project_management")
         if projects:
-            return _result(
+            return _concept_result(
                 requirement,
-                RequirementMatchStatus.MATCHED,
                 "Há evidência confirmada de gestão, planejamento ou acompanhamento de projetos.",
                 projects[:3],
+                index,
             )
 
     return baseline
 
 
-def _education_accepts_current_status(requirement: JobRequirement, status: str) -> bool | None:
+def _education_accepts_current_status(
+    requirement: JobRequirement, status: str
+) -> bool | None:
     value = _canonical(requirement.value)
     has_in_progress = "cursando" in value or "em andamento" in value
     has_completed = any(
@@ -285,7 +355,9 @@ def _education_tech_family_matches(requirement: JobRequirement, course: str) -> 
     )
     if not course_is_tech:
         return False
-    return any(_has_any(requirement.value, {marker}) for marker in _TECH_EDUCATION_MARKERS)
+    return any(
+        _has_any(requirement.value, {marker}) for marker in _TECH_EDUCATION_MARKERS
+    )
 
 
 def _match_education_v15(
@@ -298,12 +370,23 @@ def _match_education_v15(
     if baseline.status == RequirementMatchStatus.MATCHED:
         return baseline
 
+    value = _canonical(requirement.value)
     for education in index.education:
         direct_course = _contains_term(requirement.value, education.course)
         family_course = _education_tech_family_matches(requirement, education.course)
-        value = _canonical(requirement.value)
         generic_status_only = not any(
-            marker in value for marker in (" em ", " de ", " tecnologia", " ti ", " sistemas")
+            marker in value
+            for marker in (
+                "administracao",
+                "agronomia",
+                "contabeis",
+                "engenharia",
+                "tecnologia",
+                " ti ",
+                " sistemas",
+                "computacao",
+                "software",
+            )
         )
         if not (direct_course or family_course or generic_status_only):
             continue
@@ -322,7 +405,10 @@ def _match_education_v15(
             return _result(
                 requirement,
                 RequirementMatchStatus.GAP,
-                "A área de formação é compatível, mas o status confirmado não atende ao mínimo explícito.",
+                (
+                    "A área de formação é compatível, mas o status confirmado "
+                    "não atende ao mínimo explícito."
+                ),
                 evidence,
             )
         if status_match is True or direct_course or family_course:
@@ -346,6 +432,7 @@ def _enhance_requirement_v15(
     result = _match_experience_requirement(requirement, result, index)
     result = _match_structured_literal(requirement, result, index)
     result = _match_safe_professional_concepts(requirement, result, index)
+    result = _apply_structured_qualifiers(requirement, result, index)
     return _downgrade_unproven_gap(requirement, result)
 
 
@@ -354,7 +441,9 @@ def _job_is_remote(job: JobPosting) -> bool:
         return True
     location = _canonical(job.location_text or "")
     has_remote = "remoto" in location or "remote" in location
-    has_presence = "hibrido" in location or "presencial" in location or "onsite" in location
+    has_presence = (
+        "hibrido" in location or "presencial" in location or "onsite" in location
+    )
     return has_remote and not has_presence
 
 
@@ -365,7 +454,9 @@ def _job_requires_presence_v15(job: JobPosting) -> bool:
         return False
     location = _canonical(job.location_text or "")
     has_remote = "remoto" in location or "remote" in location
-    has_presence = "hibrido" in location or "presencial" in location or "onsite" in location
+    has_presence = (
+        "hibrido" in location or "presencial" in location or "onsite" in location
+    )
     return has_presence and not has_remote
 
 
@@ -519,7 +610,9 @@ def _score_requirements_v15(
         and item.status == RequirementMatchStatus.UNKNOWN
     )
 
-    confidence = int(round((evaluated_weight / total_weight) * 100)) if total_weight else 0
+    confidence = (
+        int(round((evaluated_weight / total_weight) * 100)) if total_weight else 0
+    )
     fit = int(round((matched_weight / evaluated_weight) * 100)) if evaluated_weight else None
     return fit, confidence, unknown_required_weight
 
