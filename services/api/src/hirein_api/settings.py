@@ -11,6 +11,7 @@ class Settings:
     log_level: str
     cors_origins: tuple[str, ...]
     pilot_backend_token: str | None
+    job_ingestion_token: str | None
 
 
 def load_settings() -> Settings:
@@ -20,6 +21,7 @@ def load_settings() -> Settings:
         if origin.strip()
     )
     backend_token = os.getenv("PILOT_BACKEND_TOKEN", "").strip() or None
+    ingestion_token = os.getenv("HIREIN_JOB_INGESTION_TOKEN", "").strip() or None
 
     return Settings(
         app_env=os.getenv("APP_ENV", "development"),
@@ -30,4 +32,5 @@ def load_settings() -> Settings:
         log_level=os.getenv("LOG_LEVEL", "INFO"),
         cors_origins=origins,
         pilot_backend_token=backend_token,
+        job_ingestion_token=ingestion_token,
     )
