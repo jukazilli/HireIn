@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementação proposta a partir dos erros mensurados no Blind Holdout #3.
+Implementada e publicada a partir dos erros mensurados no Blind Holdout #3.
 
 A v1.5 não recalibra pesos para fazer o benchmark parecer melhor. Ela corrige três problemas estruturais observados no v1.4:
 
@@ -90,8 +90,38 @@ Cidade/estado conhecidos com modalidade desconhecida ficam como `UNKNOWN`, não 
 
 Preferências em nível de estado também são reconhecidas. Exemplo: `Santa Catarina` é compatível com uma vaga presencial em Florianópolis/SC.
 
-## 6. Validação
+## 6. Regressão do Holdout #3
 
-O Holdout #3 passa a ser conjunto de desenvolvimento/regressão. Ele não pode ser reutilizado como validação cega da v1.5.
+O Holdout #3 foi reutilizado somente como conjunto de desenvolvimento/regressão depois que as avaliações humanas já haviam sido reveladas. Portanto, os números abaixo não são validação cega da v1.5.
 
-Depois que a implementação estiver estável e o comportamento do Holdout #3 for analisado como regressão, a validação real da versão deverá usar um Blind Holdout #4 com vagas inéditas e avaliação humana feita antes da revelação do Match.
+Comparação sobre as mesmas 10 vagas:
+
+| Métrica | v1.4 | v1.5 regressão |
+| --- | ---: | ---: |
+| Recall@5 | 0% | 100% |
+| NDCG@5 | ~0,053 | ~0,536 |
+| NDCG@10 | ~0,414 | ~0,585 |
+| Cobertura/confiança média | ~17,5% | 35,2% |
+| Vagas com score | 6/10 | 10/10 |
+
+A principal regressão corrigida foi a vaga `TOTVS — Analista de Implantação Júnior | Microvix`: ela saiu da 10ª posição na v1.4 para a 4ª posição na v1.5 e passou a aparecer no Top 5. A formação em andamento e a experiência confirmada de implantação/ERP passaram a ser recuperadas sem retirar os guardrails de evidência.
+
+Os falsos positivos restantes do conjunto apontam principalmente para outra dimensão do produto: aderência profissional não é a mesma coisa que intenção de candidatura. Modalidade desconhecida, deslocamento, remuneração e preferências pessoais podem reduzir a vontade de aplicar mesmo quando existe aderência profissional.
+
+## 7. Próxima validação
+
+O Holdout #3 agora é definitivamente conjunto de desenvolvimento/regressão e não pode ser reutilizado como validação cega.
+
+A validação real da v1.5 deve usar um Blind Holdout #4 com vagas inéditas e avaliação humana feita antes da revelação do Match.
+
+No Holdout #4, a avaliação humana deve separar duas dimensões:
+
+```text
+Professional Fit (0–4)
+Quanto meu perfil profissional atual atende esta vaga?
+
+Apply Intent (0–4)
+Quanto eu realmente gostaria de me candidatar a esta vaga?
+```
+
+`blocker_real` continua separado. Isso permite medir o Match contra aderência profissional sem confundir o algoritmo com decisões pessoais de candidatura.
