@@ -41,7 +41,7 @@ from hirein_api.profile.repository import get_primary_profile
 STRUCTURED_EVIDENCE_WARNING = "structured_any_all_evidence_enabled"
 UNCERTAINTY_WARNING = "absence_of_evidence_is_not_automatic_gap"
 EXPERIENCE_DESCRIPTION_WARNING = "experience_description_evidence_enabled"
-UNCERTAINTY_COVERAGE_WARNING = "required_unknowns_count_as_unresolved_coverage"
+UNKNOWN_RISK_WARNING = "unknown_requirements_count_as_unresolved_risk"
 
 _EVIDENCE_KINDS = {
     RequirementKind.SKILL,
@@ -190,6 +190,8 @@ def _match_structured_literal(
         return baseline
     if baseline.status == RequirementMatchStatus.MATCHED:
         return baseline
+    if baseline.status == RequirementMatchStatus.UNKNOWN and baseline.evidence:
+        return baseline
 
     any_options = _or_options(requirement)
     if any_options:
@@ -261,6 +263,8 @@ def _match_experience_requirement(
     if RequirementKind(requirement.kind) != RequirementKind.EXPERIENCE:
         return baseline
     if baseline.status == RequirementMatchStatus.MATCHED:
+        return baseline
+    if baseline.status == RequirementMatchStatus.UNKNOWN and baseline.evidence:
         return baseline
 
     for term in _experience_terms(requirement):
@@ -488,6 +492,12 @@ def _score_requirements_v14(
     matched_weight = sum(
         item.weight for item in results if item.status == RequirementMatchStatus.MATCHED
     )
+    unknown_weight = sum(
+        item.weight
+        for item in results
+        if item.importance != RequirementImportance.INFO
+        and item.status == RequirementMatchStatus.UNKNOWN
+    )
     unknown_required_weight = sum(
         item.weight
         for item in results
@@ -495,11 +505,11 @@ def _score_requirements_v14(
         and item.status == RequirementMatchStatus.UNKNOWN
     )
 
-    resolvable_weight = evaluated_weight + unknown_required_weight
-    coverage = int(round((resolvable_weight / total_weight) * 100)) if total_weight else 0
+    coverage = int(round((evaluated_weight / total_weight) * 100)) if total_weight else 0
+    unresolved_denominator = evaluated_weight + unknown_weight
     score = (
-        int(round((matched_weight / resolvable_weight) * 100))
-        if resolvable_weight
+        int(round((matched_weight / unresolved_denominator) * 100))
+        if unresolved_denominator
         else None
     )
     return score, coverage, unknown_required_weight
@@ -530,7 +540,7 @@ async def calculate_job_match(session: AsyncSession, job_id: uuid.UUID) -> JobMa
         STRUCTURED_EVIDENCE_WARNING,
         UNCERTAINTY_WARNING,
         EXPERIENCE_DESCRIPTION_WARNING,
-        UNCERTAINTY_COVERAGE_WARNING,
+        UNKNOWN_RISK_WARNING,
     ):
         if warning not in warnings:
             warnings.append(warning)
