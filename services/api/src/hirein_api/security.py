@@ -9,3 +9,9 @@ def valid_backend_token(configured: str | None, provided: str | None) -> bool:
     if not provided:
         return False
     return compare_digest(provided, configured)
+
+
+def valid_ingestion_token(configured: str | None, provided: str | None) -> bool:
+    if configured is None or not provided:
+        return False
+    return compare_digest(provided, configured)
