@@ -56,12 +56,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. O score vem depois das evidências, não antes.
+        avaliar com segurança. A aderência vem acompanhada da confiança da análise.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v0 determinístico.</strong>
-      Sem LLM e sem embeddings. Só informações confirmadas no seu perfil podem aumentar a compatibilidade.
+      <strong>Match v1.5 determinístico.</strong>
+      Aderência e confiança são dimensões diferentes. Sem LLM e sem embeddings no cálculo do score.
     </aside>
   </section>
 
@@ -105,11 +105,11 @@
       <div class="match-overview">
         <div class="match-score-panel">
           <div>
-            <p class="eyebrow">Leitura atual</p>
+            <p class="eyebrow">Aderência profissional</p>
             <span class="match-score-value">{result.score === null ? '—' : `${result.score}%`}</span>
             <p class="match-score-label">{bandLabel[result.band] ?? result.band}</p>
           </div>
-          <small>{result.score === null ? 'Sem precisão artificial' : 'Score explicável'}</small>
+          <small>{result.score === null ? 'Sem evidência suficiente para aderência' : 'Aderência entre evidências avaliadas'}</small>
         </div>
         <div class="match-summary-panel">
           <p class="section-kicker">{selectedJob.company_name}</p>
@@ -117,7 +117,7 @@
           <p class="selected-meta">{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
 
           <div class="match-facts">
-            <div class="match-fact"><span>Cobertura da análise</span><strong>{result.evaluation_coverage}%</strong></div>
+            <div class="match-fact"><span>Confiança da análise</span><strong>{result.evaluation_coverage}%</strong></div>
             <div class="match-fact"><span>Requisitos atendidos</span><strong>{result.matched_required} obrigatórios</strong></div>
             <div class="match-fact"><span>Gaps obrigatórios</span><strong>{result.missing_required}</strong></div>
             <div class="match-fact"><span>Itens não avaliáveis</span><strong>{result.unknown_requirements}</strong></div>
@@ -126,7 +126,7 @@
 
           {#if result.band === 'INSUFFICIENT_DATA'}
             <div class="status-notice warning insufficient-note">
-              Menos de 60% do peso relevante pôde ser avaliado. O HireIn prefere assumir que faltam dados a inventar um score preciso.
+              A confiança está abaixo de 60%. A aderência exibida considera apenas as evidências que puderam ser avaliadas; os itens desconhecidos continuam explícitos e não viram gaps artificiais.
             </div>
           {/if}
         </div>
@@ -174,7 +174,7 @@
             <div class="section-head-copy">
               <p class="section-kicker">Preferências</p>
               <h2 class="section-title">O que combina com seu momento</h2>
-              <p class="section-description">Conflito de preferência não é blocker automático no v0.</p>
+              <p class="section-description">Preferências ajudam na leitura, mas não substituem o fit profissional. Presença obrigatória fora das localidades aceitas pode ser um blocker explícito.</p>
             </div>
           </div>
           <div class="preference-list">
@@ -192,7 +192,7 @@
 
           <div class="interpretation">
             <strong>Como ler este resultado</strong>
-            <p>Compatibilidade não é probabilidade de entrevista ou contratação. O score organiza evidências; a decisão sobre a vaga continua sendo sua.</p>
+            <p>Aderência profissional não é probabilidade de entrevista, contratação nem intenção de candidatura. O Match organiza evidências; a decisão sobre a vaga continua sendo sua.</p>
             {#if result.warnings.length > 0}
               <div class="warning-list">
                 {#each result.warnings as warning}<span>{warning}</span>{/each}
