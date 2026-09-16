@@ -84,7 +84,10 @@ app.include_router(evals_router)
 
 
 @app.get("/health/live", response_model=HealthResponse, tags=["health"])
-async def liveness() -> HealthResponse:
+async def liveness(response: Response) -> HealthResponse:
+    # Intentionally independent from the database and downstream services.
+    # External uptime probes may call this endpoint frequently.
+    response.headers["Cache-Control"] = "no-store, max-age=0"
     return HealthResponse(status="ok")
 
 
