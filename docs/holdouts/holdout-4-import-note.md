@@ -1,0 +1,1 @@
+Temporary operational note for Blind Holdout #4 import. The actual importer is removed immediately after the one-time production run; this file exists only to anchor the operational PR and may be removed in cleanup.
