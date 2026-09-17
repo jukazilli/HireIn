@@ -41,14 +41,37 @@ class PreferenceMatchResponse(BaseModel):
     reason: str
 
 
+class ProfessionalFitResponse(BaseModel):
+    score: int | None
+    confidence: int
+    band: MatchBand
+
+
+class OpportunityCompatibilityResponse(BaseModel):
+    score: int | None
+    coverage: int
+    blocked: bool
+    blockers: list[PreferenceAspect]
+
+
 class JobMatchResponse(BaseModel):
     job_id: uuid.UUID
     profile_id: uuid.UUID
+
+    # Backward-compatible aliases. Since Match v1.6 these fields reflect
+    # Professional Fit only and no longer mix personal opportunity preferences.
     score: int | None
     band: MatchBand
     requirement_score: int | None
-    preference_score: int | None
     evaluation_coverage: int
+
+    # Explicit v1.6 dimensions.
+    professional_fit: ProfessionalFitResponse | None = None
+    opportunity_compatibility: OpportunityCompatibilityResponse | None = None
+
+    # Kept for backward compatibility; aliases opportunity compatibility score.
+    preference_score: int | None
+
     matched_required: int
     missing_required: int
     matched_preferred: int
