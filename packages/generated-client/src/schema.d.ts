@@ -567,10 +567,12 @@ export interface components {
             missing_preferred: number;
             /** Missing Required */
             missing_required: number;
+            opportunity_compatibility?: components["schemas"]["OpportunityCompatibilityResponse"] | null;
             /** Preference Results */
             preference_results: components["schemas"]["PreferenceMatchResponse"][];
             /** Preference Score */
             preference_score: number | null;
+            professional_fit?: components["schemas"]["ProfessionalFitResponse"] | null;
             /**
              * Profile Id
              * Format: uuid
@@ -835,6 +837,17 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** OpportunityCompatibilityResponse */
+        OpportunityCompatibilityResponse: {
+            /** Blocked */
+            blocked: boolean;
+            /** Blockers */
+            blockers: components["schemas"]["PreferenceAspect"][];
+            /** Coverage */
+            coverage: number;
+            /** Score */
+            score: number | null;
+        };
         /** PilotEvalMetricsResponse */
         PilotEvalMetricsResponse: {
             /** Average Coverage */
@@ -973,6 +986,14 @@ export interface components {
          * @enum {string}
          */
         PreferenceMatchStatus: "ALIGNED" | "CONFLICT" | "UNKNOWN";
+        /** ProfessionalFitResponse */
+        ProfessionalFitResponse: {
+            band: components["schemas"]["MatchBand"];
+            /** Confidence */
+            confidence: number;
+            /** Score */
+            score: number | null;
+        };
         /**
          * RequirementImportance
          * @enum {string}
