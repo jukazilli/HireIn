@@ -226,7 +226,7 @@
             <p>{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
           </div>
           <div class="algorithm-read">
-            <span>Aderência do HireIn</span>
+            <span>Professional Fit</span>
             {#if !selectedJob.evaluation}
               <strong>?</strong>
               <small>Revelado após salvar</small>
@@ -234,8 +234,11 @@
               <strong>…</strong>
               <small>Analisando</small>
             {:else if match}
-              <strong>{match.score === null ? '—' : `${match.score}%`}</strong>
-              <small>{bandLabels[match.band] ?? match.band}</small>
+              <strong>{(match.professional_fit?.score ?? match.score) === null ? '—' : `${match.professional_fit?.score ?? match.score}%`}</strong>
+              <small>
+                {bandLabels[match.professional_fit?.band ?? match.band] ?? (match.professional_fit?.band ?? match.band)}
+                · confiança {match.professional_fit?.confidence ?? match.evaluation_coverage}%
+              </small>
             {:else}
               <strong>—</strong>
             {/if}
@@ -243,8 +246,30 @@
         </div>
 
         {#if match}
+          <div class="work-section dimension-summary">
+            <div class="dimension-card">
+              <span>Professional Fit</span>
+              <strong>{(match.professional_fit?.score ?? match.score) === null ? '—' : `${match.professional_fit?.score ?? match.score}%`}</strong>
+              <small>Competência profissional · confiança {match.professional_fit?.confidence ?? match.evaluation_coverage}%</small>
+            </div>
+            <div class="dimension-card" class:blocked={match.opportunity_compatibility?.blocked}>
+              <span>Opportunity Compatibility</span>
+              <strong>{match.opportunity_compatibility?.score === null || match.opportunity_compatibility?.score === undefined ? '—' : `${match.opportunity_compatibility.score}%`}</strong>
+              <small>
+                {match.opportunity_compatibility?.blocked
+                  ? `Blocker objetivo: ${match.opportunity_compatibility.blockers.join(', ')}`
+                  : `Preferências avaliadas: ${match.opportunity_compatibility?.coverage ?? 0}%`}
+              </small>
+            </div>
+            <div class="dimension-card">
+              <span>Apply Intent</span>
+              <strong>{selectedJob.evaluation?.apply_intent ?? '—'}{selectedJob.evaluation?.apply_intent !== null && selectedJob.evaluation?.apply_intent !== undefined ? '/4' : ''}</strong>
+              <small>Declarado por você; não é inferido pelo Match.</small>
+            </div>
+          </div>
+
           <div class="work-section match-readout">
-            <div class="readout-item"><span>Confiança da análise</span><strong>{match.evaluation_coverage}%</strong></div>
+            <div class="readout-item"><span>Confiança da evidência</span><strong>{match.professional_fit?.confidence ?? match.evaluation_coverage}%</strong></div>
             <div class="readout-item"><span>Obrigatórios atendidos</span><strong>{match.matched_required}</strong></div>
             <div class="readout-item"><span>Gaps obrigatórios</span><strong>{match.missing_required}</strong></div>
             <div class="readout-item"><span>Não avaliáveis</span><strong>{match.unknown_requirements}</strong></div>
@@ -348,6 +373,12 @@
   .algorithm-read span { color: var(--text-muted); font-size: .72rem; }
   .algorithm-read strong { font-family: var(--font-display); font-size: 2.7rem; line-height: 1; letter-spacing: -.06em; color: var(--brand-700); }
   .algorithm-read small { margin-top: .2rem; color: var(--text-muted); }
+  .dimension-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: .65rem; background: var(--surface-subtle); }
+  .dimension-card { display: grid; gap: .28rem; min-width: 0; padding: .9rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: white; }
+  .dimension-card > span { color: var(--text-muted); font-size: .7rem; }
+  .dimension-card > strong { font-family: var(--font-display); font-size: 1.55rem; letter-spacing: -.03em; color: var(--brand-700); }
+  .dimension-card > small { color: var(--text-muted); font-size: .72rem; line-height: 1.4; }
+  .dimension-card.blocked { border-color: var(--danger); background: var(--danger-soft); }
   .match-readout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; padding-top: 0; padding-bottom: 0; }
   .readout-item { display: grid; gap: .2rem; padding: 1rem; border-left: 1px solid var(--border); }
   .readout-item:first-child { border-left: 0; padding-left: 0; }
@@ -371,6 +402,7 @@
   .save-review { margin-bottom: 0; }
   @media (max-width: 900px) {
     .queue-panel { max-height: none; }
+    .dimension-summary { grid-template-columns: 1fr; }
     .match-readout { grid-template-columns: repeat(2, 1fr); }
     .readout-item:nth-child(3) { border-left: 0; }
   }
