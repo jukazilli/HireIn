@@ -856,6 +856,8 @@ export interface components {
         };
         /** PilotEvalRankingItemResponse */
         PilotEvalRankingItemResponse: {
+            /** Apply Intent */
+            apply_intent: number | null;
             /** Band */
             band: string;
             /** Blocker Real */
@@ -887,6 +889,8 @@ export interface components {
         };
         /** PilotEvaluationResponse */
         PilotEvaluationResponse: {
+            /** Apply Intent */
+            apply_intent: number | null;
             /** Blocker Real */
             blocker_real: boolean;
             /**
@@ -912,6 +916,8 @@ export interface components {
         };
         /** PilotEvaluationUpsert */
         PilotEvaluationUpsert: {
+            /** Apply Intent */
+            apply_intent?: number | null;
             /**
              * Blocker Real
              * @default false

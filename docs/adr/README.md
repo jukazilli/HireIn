@@ -37,6 +37,7 @@ Cada ADR deve registrar:
 9. [ADR-0009 — Piloto privado single-user na nuvem](0009-private-cloud-single-user-pilot.md)
 10. [ADR-0010 — Autenticação dedicada para ingestão de vagas](0010-job-search-ingestion-auth.md)
 11. [ADR-0011 — Uptime externo e keep-alive controlado no piloto](0011-uptime-keepalive-pilot.md)
+12. [ADR-0012 — Profile-guided job discovery](0012-profile-guided-job-discovery.md)
 
 ## Regra de governança
 

@@ -157,31 +157,33 @@ def save_human_review(page: Page) -> None:
     queue_button.click()
 
     expect(
-        page.get_by_role("heading", name="Quanto essa vaga faz sentido para você?")
+        page.get_by_role("heading", name="Quanto seu perfil profissional atual atende esta vaga?")
+    ).to_be_visible()
+    expect(
+        page.get_by_role("heading", name="Quanto você realmente gostaria de se candidatar?")
     ).to_be_visible()
     expect(page.get_by_text("Revelado após salvar", exact=True)).to_be_visible()
-    expect(page.get_by_text("Cobertura", exact=True)).to_have_count(0)
+    expect(page.get_by_text("Confiança da análise", exact=True)).to_have_count(0)
     expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_have_count(0)
 
-    rating_group = page.get_by_role(
-        "group", name="Relevância da vaga de zero a quatro"
-    )
-    rating_group.get_by_role("button").nth(4).click()
+    fit_group = page.get_by_role("group", name="Professional Fit de zero a quatro")
+    fit_group.get_by_role("button").nth(4).click()
+    intent_group = page.get_by_role("group", name="Apply Intent de zero a quatro")
+    intent_group.get_by_role("button").nth(3).click()
     page.get_by_label(re.compile(r"^Por quê\?"), exact=False).fill(
-        "A oportunidade sintética está alinhada ao perfil usado no smoke test."
+        "Fit alto e intenção boa para a oportunidade sintética do smoke test."
     )
     page.get_by_role("button", name="Salvar e revelar Match").click()
 
     expect(page.get_by_text(re.compile(r"^Sua avaliação foi salva\."))).to_be_visible()
-    expect(page.get_by_text("Cobertura", exact=True)).to_be_visible()
+    expect(page.get_by_text("Confiança da análise", exact=True)).to_be_visible()
     expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_be_visible()
-    expect(
-        page.get_by_text(re.compile(r"^O benchmark agregado será calculado ao concluir o lote\."))
-    ).to_be_visible()
+    expect(page.get_by_text(re.compile(r"^Professional Fit mede o quanto"))).to_be_visible()
 
     page.reload(wait_until="domcontentloaded")
     queue_button = page.get_by_role("button").filter(has_text=COMPANY_NAME)
-    expect(queue_button).to_contain_text("4/4")
+    expect(queue_button).to_contain_text("Fit 4/4")
+    expect(queue_button).to_contain_text("Intent 3/4")
 
 
 def assert_review_api(page: Page, job_id: str) -> None:
@@ -192,6 +194,7 @@ def assert_review_api(page: Page, job_id: str) -> None:
     assert created is not None
     assert created["evaluation"] is not None
     assert created["evaluation"]["relevance"] == 4
+    assert created["evaluation"]["apply_intent"] == 3
 
     report_response = page.request.get(f"{WEB_BASE_URL}/api/v1/evals/report")
     assert report_response.ok, (
@@ -199,6 +202,8 @@ def assert_review_api(page: Page, job_id: str) -> None:
     )
     report = report_response.json()
     assert report["metrics"]["sample_count"] == 1
+    assert report["ranking"][0]["relevance"] == 4
+    assert report["ranking"][0]["apply_intent"] == 3
 
 
 def logout(page: Page) -> None:
