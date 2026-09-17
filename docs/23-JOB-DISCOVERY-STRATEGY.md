@@ -1,57 +1,50 @@
-# Job Discovery Strategy — Search, Match, Intent e Ranking
+# Job Discovery Strategy — Search, Fit, Compatibility, Intent e Ranking
 
 ## Status
 
-Direção de produto e arquitetura aceita para a evolução pós-validação do Match v1.5.
+Direção de produto e arquitetura atualizada após o Blind Holdout #4 e a definição do Match v1.6.
 
-O objetivo deste documento é separar responsabilidades que até aqui apareciam de forma implícita no HireIn. O produto não deve depender de um único score para decidir o que procurar, o que combina profissionalmente e o que o usuário deseja.
+O HireIn não deve depender de um único score para decidir o que procurar, o que a pessoa consegue fazer, quais oportunidades são viáveis e em quais vagas ela deseja tentar.
 
 ## 1. Princípio central
 
-O HireIn deve operar em quatro camadas distintas:
+O HireIn opera em cinco camadas distintas:
 
 ```text
 Search / Discovery
       ↓
-Professional Match
+Professional Fit
+      ↓
+Opportunity Compatibility
       ↓
 Apply Intent
       ↓
-Ranking
+Ranking / Recommendation
 ```
-
-Cada camada responde uma pergunta diferente.
 
 | Camada | Pergunta |
 | --- | --- |
 | Search / Discovery | Quais vagas vale a pena analisar para esta pessoa? |
-| Professional Match | Quanto o perfil profissional atual atende esta vaga? |
-| Apply Intent | Quanto esta oportunidade combina com o que a pessoa quer agora? |
-| Ranking | Quais oportunidades devem aparecer primeiro? |
+| Professional Fit | Quanto o perfil profissional atual atende os requisitos da vaga? |
+| Opportunity Compatibility | A oportunidade é compatível com localização, modalidade, salário, contrato e demais condições conhecidas? |
+| Apply Intent | Quanto a própria pessoa deseja se candidatar? |
+| Ranking / Recommendation | Quais oportunidades devem aparecer primeiro e por quê? |
 
-Nenhuma dessas dimensões deve ser usada como substituta silenciosa das demais.
+Nenhuma dimensão pode substituir silenciosamente outra.
 
-## 2. Não construir um catálogo massivo no piloto
+## 2. Não construir catálogo massivo no piloto
 
 O HireIn não começará capturando milhões de vagas indiscriminadamente para depois personalizar um feed.
 
-Isso adicionaria cedo demais:
+Isso adicionaria cedo demais crawling em massa, deduplicação em alto volume, expiração, indexação distribuída e custo operacional sem validar antes a qualidade da descoberta.
 
-- crawling em massa;
-- alto volume de deduplicação;
-- atualização de vagas expiradas;
-- indexação distribuída;
-- custo de armazenamento e processamento;
-- dependência de infraestrutura de busca em escala;
-- grande quantidade de oportunidades que nenhum usuário analisaria.
-
-A estratégia continua alinhada ao roadmap: qualidade antes de volume e validação antes de escala.
+A estratégia continua sendo qualidade antes de volume.
 
 ## 3. Profile-guided retrieval
 
-A descoberta futura será orientada pelo Candidate Core, mas não limitada por correspondência literal de cargo.
+A descoberta futura será orientada pelo Candidate Core, sem limitar a busca a correspondência literal de cargo.
 
-O sistema deverá derivar um `Search Profile` a partir de três grupos:
+O `Search Profile` deriva de:
 
 ```text
 quem a pessoa é hoje
@@ -61,24 +54,24 @@ para onde quer ir
 quais condições aceita
 ```
 
-Entradas esperadas incluem:
+Entradas esperadas:
 
-- cargos e responsabilidades já exercidos;
+- cargos e responsabilidades exercidos;
 - skills e domínios confirmados;
 - cargos e áreas desejados;
-- senioridade;
+- transições profissionais desejadas;
 - localização e modalidade;
 - contrato;
-- preferências explícitas;
-- transições profissionais desejadas.
+- senioridade desejada;
+- preferências explícitas.
 
-O Search Profile não é uma cópia do currículo. Ele é uma representação voltada a recuperação de oportunidades.
+O Search Profile é uma representação voltada à recuperação de oportunidades, não uma cópia do currículo.
 
 ## 4. Query Expansion
 
-O motor de busca deve buscar além do título literal.
+A busca deve considerar famílias de cargos.
 
-Exemplo conceitual:
+Exemplo:
 
 ```text
 perfil atual:
@@ -88,7 +81,7 @@ objetivo:
 Projetos e Produto
 ```
 
-O Search Profile pode gerar famílias como:
+Famílias possíveis:
 
 ```text
 alta proximidade
@@ -107,7 +100,7 @@ transição desejada
 - Product Operations
 ```
 
-O objetivo do retrieval é alto recall: encontrar possibilidades plausíveis sem criar uma bolha profissional estreita.
+O retrieval busca alto recall sem criar uma bolha profissional estreita.
 
 ## 5. Pipeline alvo
 
@@ -128,100 +121,147 @@ deduplicação
       ↓
 Candidate Pool
       ↓
-Professional Match
+Professional Fit
       ↓
-Apply Intent / preferências
+Opportunity Compatibility
       ↓
-Ranking
+Apply Intent
+      ↓
+Ranking / Recommendation
       ↓
 Opportunities
 ```
 
-O pipeline de ingestão existente continua sendo a fronteira entre descoberta externa e Job Core.
+A ingestão existente continua sendo a fronteira entre descoberta externa e Job Core.
 
-## 6. Professional Match
+## 6. Professional Fit
 
-O Match continua responsável apenas por aderência profissional explicável.
+Professional Fit mede somente aderência profissional explicável.
 
-Ele deve medir evidências como:
+Pode usar:
 
 - experiência;
 - competências;
 - responsabilidades;
 - formação;
 - idiomas;
-- requisitos obrigatórios;
-- senioridade;
+- ferramentas;
+- domínios;
+- requisitos obrigatórios e desejáveis;
+- evidência quantitativa quando exigida.
+
+A saída mínima é:
+
+```text
+score
+confidence
+band
+matched requirements
+gaps
+unknowns
+evidence
+```
+
+Professional Fit não deve cair para zero porque a vaga fica em outra cidade, paga abaixo do desejado ou usa modalidade não aceita.
+
+`score` não representa probabilidade de entrevista ou contratação.
+
+## 7. Opportunity Compatibility
+
+Opportunity Compatibility mede condições da oportunidade em relação às preferências e restrições da pessoa.
+
+Inclui, quando houver dados:
+
+- localização;
+- modalidade;
+- remuneração;
+- tipo de contrato;
+- senioridade desejada;
+- título/carreira alvo;
 - blockers objetivos.
 
-O Match não representa probabilidade de entrevista, contratação ou desejo pessoal de candidatura.
-
-A saída continua separando:
+A saída mínima é:
 
 ```text
-Aderência profissional
-Confiança da análise
-Blockers
-Evidências
-Gaps
-Unknowns
+score
+coverage
+blocked
+blockers[]
+preference results
 ```
 
-## 7. Apply Intent
+No v1.6, blocker explícito de localização pode tornar `blocked = true`, mas não altera o Professional Fit.
 
-Apply Intent é uma dimensão humana diferente do Professional Match.
+Conflitos de preferência que não são blockers permanecem conflitos, sem impedir a candidatura automaticamente.
 
-Pode considerar, por exemplo:
+## 8. Apply Intent
 
-- vontade de atuar naquela função;
-- empresa;
-- modalidade;
-- localização;
-- remuneração conhecida;
-- momento de carreira;
-- interesse em transição;
-- preferências pessoais declaradas.
+Apply Intent é informação humana.
 
-Uma vaga pode ter alto Professional Fit e baixo Apply Intent, ou o inverso.
+Pergunta:
 
-No piloto, Apply Intent é explicitamente informado pelo usuário. Não existe modelo automático de Intent nesta etapa.
+> Quanto eu realmente gostaria de me candidatar?
 
-## 8. Ranking futuro
+No piloto, permanece em escala 0–4 e só existe quando informado pelo usuário.
 
-O ranking final não deve ser simplesmente `Match DESC`.
+O matcher não deve inferir Apply Intent automaticamente. Uma vaga pode ter:
 
-Ele poderá futuramente combinar sinais como:
+```text
+Professional Fit alto
+Opportunity Compatibility baixa
+Apply Intent alto
+```
+
+ou qualquer outra combinação válida.
+
+## 9. Ranking / Recommendation
+
+O ranking futuro não será simplesmente `score DESC`.
+
+Ele poderá usar separadamente:
 
 - Professional Fit;
-- confiança;
+- confiança da evidência;
+- Opportunity Compatibility;
 - blockers;
-- Apply Intent / preferências;
+- Apply Intent;
 - recência;
 - qualidade da fonte;
-- exploração controlada de oportunidades adjacentes.
+- exploração de oportunidades adjacentes.
 
-Os pesos não devem ser definidos antes de dataset e avaliação próprios.
+Pesos de recomendação só serão definidos após dataset próprio. Não serão calibrados para reproduzir um holdout já revelado.
 
-## 9. Blind Holdout #4
+## 10. Blind Holdout #4
 
-Antes de construir o Search Profile v0, a prioridade continua sendo validar o Match v1.5.
+O Holdout #4 validou o Match v1.5 antes da introdução da separação estrutural do v1.6.
 
-O Holdout #4 será reduzido para 5 vagas inéditas e coletará, antes de revelar o Match:
+Resultado público-safe:
+
+- 5 vagas;
+- 3 relevantes por Professional Fit >= 3;
+- Recall@5 = 100%;
+- NDCG@5 = 1,000;
+- cobertura média = 15,8%.
+
+O conjunto agora é somente regressão/desenvolvimento.
+
+## 11. Match v1.6
+
+O v1.6 formaliza:
 
 ```text
-Professional Fit: 0–4
-Apply Intent: 0–4
-Blocker real: sim/não
-Motivo: texto livre
+Professional Fit != Opportunity Compatibility != Apply Intent
 ```
 
-A métrica de Match usa `Professional Fit` como ground truth. `Apply Intent` é analisado separadamente e não altera o score do Match.
+Por compatibilidade, os campos legados `score`, `band`, `requirement_score` e `evaluation_coverage` continuam disponíveis, mas passam a representar Professional Fit.
 
-## 10. Próximo experimento após o Holdout #4
+`preference_score` permanece disponível como alias do score de Opportunity Compatibility.
 
-Se a v1.5 demonstrar qualidade suficiente no conjunto cego, o próximo experimento será `Search Profile v0`.
+O contrato novo também expõe objetos explícitos para as duas dimensões algorítmicas.
 
-Escopo inicial proposto:
+## 12. Próximo experimento
+
+Depois da regressão técnica do v1.6, o próximo experimento continua sendo `Search Profile v0`:
 
 ```text
 1 perfil
@@ -232,25 +272,24 @@ queries expandidas
       ↓
 normalização + deduplicação
       ↓
-Match
+Professional Fit + Opportunity Compatibility
       ↓
 Top 5 para revisão humana
 ```
 
-A pergunta do experimento será:
+Pergunta principal:
 
 > O HireIn consegue encontrar sozinho oportunidades que valem a pena o usuário analisar?
 
-Isso é uma hipótese diferente da qualidade do Match e deve ser medida separadamente.
+Isso é uma hipótese diferente da qualidade do Match.
 
-## 11. Fora do escopo neste momento
+## 13. Fora de escopo agora
 
 - crawler massivo;
 - milhões de vagas persistidas;
-- feed infinito;
 - Elasticsearch/OpenSearch;
 - ranking comportamental por ML;
 - treinamento de modelo personalizado;
-- alteração automática dos pesos a partir de cliques;
-- inferência automática de Apply Intent sem avaliação própria;
-- automação de candidatura baseada apenas no ranking.
+- alteração automática de pesos por cliques;
+- inferência automática de Apply Intent;
+- candidatura automática baseada apenas no ranking.
