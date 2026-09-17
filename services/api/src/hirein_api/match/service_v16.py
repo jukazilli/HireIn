@@ -55,7 +55,7 @@ def _opportunity_compatibility(
 ) -> OpportunityCompatibilityResponse:
     score, coverage = _score_preferences_v11(baseline.preference_results)
 
-    blockers = [
+    blockers: list[PreferenceAspect] = [
         item.aspect
         for item in baseline.preference_results
         if item.aspect == PreferenceAspect.LOCATION
