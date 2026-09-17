@@ -8,8 +8,10 @@
     type PilotReviewJob
   } from '$lib/api';
 
-  const ratingLabels = ['Irrelevante', 'Fraca', 'Razoável', 'Boa', 'Excelente'];
-  const ratingShort = ['Não', 'Pouco', 'Talvez', 'Sim', 'Muito'];
+  const fitLabels = ['Não atende', 'Baixa', 'Parcial', 'Boa', 'Muito alinhada'];
+  const fitShort = ['Não', 'Pouco', 'Parcial', 'Sim', 'Muito'];
+  const intentLabels = ['Não aplicaria', 'Muito improvável', 'Talvez', 'Provavelmente', 'Aplicaria'];
+  const intentShort = ['Não', 'Pouco', 'Talvez', 'Sim', 'Muito'];
   const errorLabels: Record<string, string> = {
     MISSING_PROFILE_EVIDENCE: 'Falta evidência no perfil',
     BAD_JOB_NORMALIZATION: 'Normalização ruim da vaga',
@@ -34,7 +36,8 @@
   let error = '';
   let message = '';
 
-  let relevance: number | null = null;
+  let professionalFit: number | null = null;
+  let applyIntent: number | null = null;
   let blockerReal = false;
   let reason = '';
   let errorCategory: EvaluationErrorCategory | '' = '';
@@ -44,7 +47,8 @@
   $: reviewedCount = jobs.filter((job) => job.evaluation).length;
 
   function fillEvaluation(job: PilotReviewJob) {
-    relevance = job.evaluation?.relevance ?? null;
+    professionalFit = job.evaluation?.relevance ?? null;
+    applyIntent = job.evaluation?.apply_intent ?? null;
     blockerReal = job.evaluation?.blocker_real ?? false;
     reason = job.evaluation?.reason ?? '';
     errorCategory = job.evaluation?.error_category ?? '';
@@ -97,13 +101,16 @@
   }
 
   async function saveEvaluation() {
-    if (!selectedJob || relevance === null) return;
+    if (!selectedJob || professionalFit === null) return;
+    if (!selectedJob.evaluation && applyIntent === null) return;
+
     const jobId = selectedJob.job_id;
     saving = true; error = ''; message = '';
     let savedSuccessfully = false;
     try {
       const payload: PilotEvaluationUpsert = {
-        relevance,
+        relevance: professionalFit,
+        apply_intent: applyIntent,
         blocker_real: blockerReal,
         reason: reason.trim() || null,
         error_category: errorCategory || null
@@ -144,19 +151,19 @@
       <p class="eyebrow">Revisão humana</p>
       <h1 class="page-title">Primeiro a sua opinião. Depois, a do algoritmo.</h1>
       <p class="page-lead">
-        Nas vagas pendentes, o Match fica oculto até você salvar sua avaliação. Assim medimos a diferença
-        entre a sua leitura real e o algoritmo sem contaminar o benchmark por ancoragem.
+        Nas vagas pendentes, o Match fica oculto até você salvar sua avaliação. No Blind #4 separamos
+        aderência profissional da sua vontade real de se candidatar para não misturar capacidade com preferência.
       </p>
     </div>
     <aside class="context-note">
       <strong>{reviewedCount}/{jobs.length} vagas revisadas.</strong>
-      A sua nota é referência do benchmark. Ela não treina nem altera o Match automaticamente.
+      Sua avaliação é referência do benchmark. Ela não treina nem altera o Match automaticamente.
     </aside>
   </section>
 
   <div class="status-notice benchmark-note">
-    O benchmark agregado será calculado ao concluir o lote. Durante a revisão ele fica fora do caminho de
-    salvamento para manter a navegação rápida e evitar interferência na sua avaliação.
+    Professional Fit mede o quanto seu perfil atual atende a vaga. Apply Intent mede o quanto você realmente
+    gostaria de se candidatar. O Match será comparado ao Professional Fit, não ao desejo de aplicar.
   </div>
 
   {#if error}<div class="status-notice error message-space" aria-live="polite">{error}</div>{/if}
@@ -187,8 +194,12 @@
               </div>
               <div class="opportunity-side">
                 {#if job.evaluation}
-                  <strong class="human-rating">{job.evaluation.relevance}/4</strong>
-                  <span>{ratingLabels[job.evaluation.relevance]}</span>
+                  <strong class="human-rating">Fit {job.evaluation.relevance}/4</strong>
+                  {#if job.evaluation.apply_intent !== null}
+                    <span>Intent {job.evaluation.apply_intent}/4</span>
+                  {:else}
+                    <span>{fitLabels[job.evaluation.relevance]}</span>
+                  {/if}
                 {:else}
                   <strong class="pending-label">Pendente</strong>
                 {/if}
@@ -205,7 +216,7 @@
           <span class="placeholder-line"></span>
           <p class="section-kicker">Sua leitura</p>
           <h2>Escolha uma vaga para avaliar.</h2>
-          <p>Nas vagas pendentes, você decide primeiro. O score e os detalhes do Match aparecem somente depois que a sua avaliação for salva.</p>
+          <p>Nas vagas pendentes, você avalia Fit e Intent primeiro. O Match aparece somente depois que a sua avaliação for salva.</p>
         </div>
       {:else}
         <div class="work-section review-hero">
@@ -215,7 +226,7 @@
             <p>{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
           </div>
           <div class="algorithm-read">
-            <span>Leitura do HireIn</span>
+            <span>Aderência do HireIn</span>
             {#if !selectedJob.evaluation}
               <strong>?</strong>
               <small>Revelado após salvar</small>
@@ -233,7 +244,7 @@
 
         {#if match}
           <div class="work-section match-readout">
-            <div class="readout-item"><span>Cobertura</span><strong>{match.evaluation_coverage}%</strong></div>
+            <div class="readout-item"><span>Confiança da análise</span><strong>{match.evaluation_coverage}%</strong></div>
             <div class="readout-item"><span>Obrigatórios atendidos</span><strong>{match.matched_required}</strong></div>
             <div class="readout-item"><span>Gaps obrigatórios</span><strong>{match.missing_required}</strong></div>
             <div class="readout-item"><span>Não avaliáveis</span><strong>{match.unknown_requirements}</strong></div>
@@ -243,17 +254,37 @@
         <div class="work-section human-read">
           <div class="section-head">
             <div class="section-head-copy">
-              <p class="section-kicker">Sua decisão</p>
-              <h2 class="section-title">Quanto essa vaga faz sentido para você?</h2>
-              <p class="section-description">Responda como candidato. Nas vagas pendentes, o score só aparece depois de salvar.</p>
+              <p class="section-kicker">Professional Fit</p>
+              <h2 class="section-title">Quanto seu perfil profissional atual atende esta vaga?</h2>
+              <p class="section-description">Ignore por um momento se você gostaria de trabalhar nessa empresa. Avalie somente capacidade, experiência, formação e requisitos.</p>
             </div>
           </div>
 
-          <div class="rating-scale" role="group" aria-label="Relevância da vaga de zero a quatro">
-            {#each ratingLabels as label, value}
-              <button class:active={relevance === value} type="button" onclick={() => (relevance = value)}>
+          <div class="rating-scale" role="group" aria-label="Professional Fit de zero a quatro">
+            {#each fitLabels as label, value}
+              <button class:active={professionalFit === value} type="button" onclick={() => (professionalFit = value)}>
                 <span>{value}</span>
-                <strong>{ratingShort[value]}</strong>
+                <strong>{fitShort[value]}</strong>
+                <small>{label}</small>
+              </button>
+            {/each}
+          </div>
+
+          <div class="dimension-divider"></div>
+
+          <div class="section-head intent-head">
+            <div class="section-head-copy">
+              <p class="section-kicker">Apply Intent</p>
+              <h2 class="section-title">Quanto você realmente gostaria de se candidatar?</h2>
+              <p class="section-description">Agora considere modalidade, localização, empresa, salário conhecido, momento de carreira e vontade de fazer essa transição.</p>
+            </div>
+          </div>
+
+          <div class="rating-scale" role="group" aria-label="Apply Intent de zero a quatro">
+            {#each intentLabels as label, value}
+              <button class:active={applyIntent === value} type="button" onclick={() => (applyIntent = value)}>
+                <span>{value}</span>
+                <strong>{intentShort[value]}</strong>
                 <small>{label}</small>
               </button>
             {/each}
@@ -261,7 +292,7 @@
 
           <label class="blocker-row" class:active={blockerReal}>
             <input type="checkbox" bind:checked={blockerReal} />
-            <span><strong>Existe um blocker real</strong><small>Algo que sozinho faria você descartar esta oportunidade, independentemente do score.</small></span>
+            <span><strong>Existe um blocker real</strong><small>Algo objetivo que sozinho impediria a candidatura ou tornaria a oportunidade inviável.</small></span>
           </label>
 
           <div class="form-grid review-fields">
@@ -276,17 +307,17 @@
               </label>
             {/if}
             <label class="field">Por quê? <small>Opcional, mas valioso</small>
-              <textarea rows="5" maxlength="2000" bind:value={reason} placeholder="Ex.: a vaga faz sentido tecnicamente, mas eu descartaria por localização ou por uma exigência específica."></textarea>
+              <textarea rows="5" maxlength="2000" bind:value={reason} placeholder="Ex.: profissionalmente eu atenderia bem, mas não me candidataria por ser presencial; ou eu gostaria da vaga apesar de ainda ter alguns gaps."></textarea>
             </label>
           </div>
 
           <div class="action-row save-review">
             <span class="muted small">
               {selectedJob.evaluation
-                ? 'Depois de revelar o Match, você pode classificar o erro e atualizar sua avaliação sem mudar a nota inicial automaticamente.'
-                : 'O Match permanece oculto até esta avaliação ser salva.'}
+                ? 'O Match já foi revelado. Você pode classificar o erro e atualizar suas respostas.'
+                : 'Para vagas novas, Fit e Intent são obrigatórios. O Match permanece oculto até salvar.'}
             </span>
-            <button class="btn btn-primary" type="button" disabled={saving || relevance === null} onclick={saveEvaluation}>
+            <button class="btn btn-primary" type="button" disabled={saving || professionalFit === null || (!selectedJob.evaluation && applyIntent === null)} onclick={saveEvaluation}>
               {saving ? 'Salvando avaliação…' : selectedJob.evaluation ? 'Atualizar minha avaliação' : 'Salvar e revelar Match'}
             </button>
           </div>
@@ -303,7 +334,7 @@
   .queue-panel { max-height: calc(100vh - var(--nav-height) - 2rem); overflow: auto; }
   .queue-head { margin-bottom: .8rem; }
   .queue-card { padding: .8rem; }
-  .human-rating { color: var(--brand-700); font-family: var(--font-display); font-size: 1rem; }
+  .human-rating { color: var(--brand-700); font-family: var(--font-display); font-size: .9rem; }
   .pending-label { color: var(--text-muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; }
   .review-panel { min-height: 520px; }
   .review-placeholder { min-height: 520px; display: grid; align-content: center; justify-items: start; padding: clamp(1.5rem, 6vw, 4rem); }
@@ -329,6 +360,8 @@
   .rating-scale button > span { color: var(--text-muted); font-size: .68rem; }
   .rating-scale button > strong { font-size: .9rem; }
   .rating-scale button > small { color: var(--text-muted); font-size: .68rem; }
+  .dimension-divider { height: 1px; margin: 1.4rem 0; background: var(--border); }
+  .intent-head { margin-bottom: .8rem; }
   .blocker-row { display: flex; gap: .75rem; align-items: flex-start; margin-top: 1rem; padding: .9rem; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
   .blocker-row.active { border-color: #f0caca; background: var(--danger-soft); }
   .blocker-row input { margin-top: .2rem; accent-color: var(--danger); }
