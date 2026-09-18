@@ -503,7 +503,7 @@ export interface components {
         /** EvidenceGapItemResponse */
         EvidenceGapItemResponse: {
             /** Atomic Operator */
-            atomic_operator?: "ANY" | "ALL" | null;
+            atomic_operator?: ("ANY" | "ALL") | null;
             /** Atomic Options */
             atomic_options?: string[];
             /** Coverage Impact */
@@ -546,13 +546,13 @@ export interface components {
         };
         /** EvidenceResolutionResponse */
         EvidenceResolutionResponse: {
+            /** Confirmed Atoms */
+            confirmed_atoms?: string[];
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-            /** Confirmed Atoms */
-            confirmed_atoms?: string[];
             decision: components["schemas"]["EvidenceDecision"];
             /** Evidence Text */
             evidence_text: string | null;
