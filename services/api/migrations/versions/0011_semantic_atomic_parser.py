@@ -54,6 +54,7 @@ _SHARED_PREFIX_HEADS = {
     "testes",
 }
 _PREPOSITIONS = {"de", "do", "da", "dos", "das", "com", "para", "em"}
+_MAX_WORDS_PER_ATOM = 4
 
 
 def _canonical_word(value: str) -> str:
@@ -117,24 +118,32 @@ def _semantic_options(value: str) -> list[str]:
         ):
             repaired[index] = f"{left} {complement}"
 
-    first_words = repaired[0].split()
-    if (
-        len(first_words) >= 2
-        and _canonical_word(first_words[0]) in _SHARED_PREFIX_HEADS
-    ):
-        head = first_words[0]
-        for index in range(1, len(repaired)):
-            option = repaired[index]
-            words = option.split()
-            short_modifier = (
-                1 <= len(words) <= 2
-                and option[:1].islower()
-                and not any(_canonical_word(word) in _PREPOSITIONS for word in words)
-            )
-            if short_modifier:
-                repaired[index] = f"{head} {option}"
+    semantic: list[str] = []
+    active_head: str | None = None
+    for option in repaired:
+        words = option.split()
+        if (
+            len(words) >= 2
+            and _canonical_word(words[0]) in _SHARED_PREFIX_HEADS
+        ):
+            active_head = words[0]
+            semantic.append(option)
+            continue
 
-    return repaired
+        short_modifier = (
+            active_head is not None
+            and 1 <= len(words) <= 2
+            and option[:1].islower()
+            and not any(_canonical_word(word) in _PREPOSITIONS for word in words)
+        )
+        if short_modifier:
+            semantic.append(f"{active_head} {option}")
+        else:
+            semantic.append(option)
+
+    if any(len(option.split()) > _MAX_WORDS_PER_ATOM for option in semantic):
+        return []
+    return semantic
 
 
 def _normalized(value: str) -> str:
