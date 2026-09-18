@@ -133,7 +133,9 @@ def calculate_match(page: Page) -> None:
     job_button.click()
 
     expect(page.get_by_text("Confiança da evidência", exact=True)).to_be_visible()
-    expect(page.get_by_text("Aderência entre evidências avaliadas", exact=True)).to_be_visible()
+    expect(page.get_by_text("Competência profissional entre evidências avaliadas", exact=True)).to_be_visible()
+    expect(page.get_by_text("Opportunity Compatibility", exact=True)).to_be_visible()
+    expect(page.get_by_text("Apply Intent", exact=True)).to_be_visible()
 
 
 def assert_match_api(page: Page, job_id: str) -> None:
@@ -142,6 +144,10 @@ def assert_match_api(page: Page, job_id: str) -> None:
     match = response.json()
     assert match["job_id"] == job_id
     assert match["evaluation_coverage"] > 0
+    assert match["professional_fit"] is not None
+    assert match["professional_fit"]["confidence"] == match["evaluation_coverage"]
+    assert match["professional_fit"]["score"] == match["score"]
+    assert match["opportunity_compatibility"] is not None
     assert len(match["requirement_results"]) == 1
     assert match["requirement_results"][0]["value"] == "Gestão de Projetos"
 
