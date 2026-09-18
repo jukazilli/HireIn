@@ -146,12 +146,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. No v1.10, requisitos compostos são quebrados em conceitos atômicos antes de entrarem no Candidate Core, evitando aprender alternativas que você nunca confirmou.
+        avaliar com segurança. No v1.11, requisitos compostos preservam o contexto semântico ao serem quebrados em conceitos atômicos, evitando fatos genéricos como “escrita” ou “levantamento”.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.10 com evidência atômica.</strong>
-      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. Em requisitos compostos, você escolhe exatamente quais itens possui antes de o HireIn aprender algo novo.
+      <strong>Match v1.11 com átomos semânticos.</strong>
+      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. Em requisitos compostos, o HireIn preserva o contexto compartilhado antes de aprender os itens confirmados.
     </aside>
   </section>
 

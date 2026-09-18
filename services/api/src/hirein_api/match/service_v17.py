@@ -5,6 +5,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hirein_api.atomic_requirements import parse_atomic_requirement
 from hirein_api.jobs.domain import RequirementImportance, RequirementKind
 from hirein_api.jobs.models import JobRequirement
 from hirein_api.jobs.repository import get_job
@@ -25,10 +26,7 @@ from hirein_api.match.service_v11 import (
     _canonical,
 )
 from hirein_api.match.service_v12 import UNKNOWN_REQUIRED_WARNING
-from hirein_api.match.service_v14 import (
-    _and_options,
-    _literal_evidence,
-)
+from hirein_api.match.service_v14 import _literal_evidence
 from hirein_api.match.service_v15 import (
     _concept_evidence,
     _concept_result,
@@ -298,31 +296,10 @@ def _compound_components(requirement: JobRequirement) -> list[str]:
     if kind not in {RequirementKind.SKILL, RequirementKind.TOOL}:
         return []
 
-    value = _canonical(requirement.value)
-    if " ou " in value:
+    parsed = parse_atomic_requirement(requirement.value, kind)
+    if parsed is None or parsed.operator != "ALL":
         return []
-
-    explicit_and = _and_options(requirement)
-    if explicit_and:
-        return explicit_and
-
-    if "," not in requirement.value and ";" not in requirement.value:
-        return []
-
-    normalized = re.sub(r"\s*[,;|]\s*", " | ", requirement.value)
-    parts: list[str] = []
-    for chunk in normalized.split("|"):
-        canonical_chunk = _canonical(chunk)
-        if not canonical_chunk:
-            continue
-        subparts = [
-            item.strip()
-            for item in re.split(r"\s+e\s+", canonical_chunk)
-            if item.strip()
-        ]
-        parts.extend(subparts)
-
-    return parts if len(parts) >= 2 else []
+    return list(parsed.options)
 
 
 def _alias_evidence(

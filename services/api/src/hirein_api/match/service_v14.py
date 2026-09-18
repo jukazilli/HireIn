@@ -6,6 +6,7 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hirein_api.atomic_requirements import parse_atomic_requirement
 from hirein_api.jobs.domain import RequirementImportance, RequirementKind
 from hirein_api.jobs.models import JobRequirement
 from hirein_api.jobs.repository import get_job
@@ -99,11 +100,18 @@ def _strip_education_prefix(value: str) -> str:
 
 
 def _or_options(requirement: JobRequirement) -> list[str]:
+    kind = RequirementKind(requirement.kind)
+    if kind in {RequirementKind.SKILL, RequirementKind.TOOL}:
+        parsed = parse_atomic_requirement(requirement.value, kind)
+        if parsed is not None and parsed.operator == "ANY":
+            return list(parsed.options)
+        return []
+
     value = _canonical(requirement.value)
     if " ou " not in value:
         return []
 
-    if RequirementKind(requirement.kind) == RequirementKind.EDUCATION:
+    if kind == RequirementKind.EDUCATION:
         value = _strip_education_prefix(value)
 
     normalized = re.sub(r"\s*[,;|]\s*", " ou ", value)
@@ -115,16 +123,10 @@ def _and_options(requirement: JobRequirement) -> list[str]:
     if kind not in {RequirementKind.SKILL, RequirementKind.TOOL}:
         return []
 
-    value = _canonical(requirement.value)
-    if " ou " in value or "," in requirement.value or ";" in requirement.value:
+    parsed = parse_atomic_requirement(requirement.value, kind)
+    if parsed is None or parsed.operator != "ALL":
         return []
-
-    parts = [item.strip() for item in re.split(r"\s+e\s+", value) if item.strip()]
-    if len(parts) != 2:
-        return []
-    if any(len(part.split()) > 3 for part in parts):
-        return []
-    return parts
+    return list(parsed.options)
 
 
 def _literal_evidence(

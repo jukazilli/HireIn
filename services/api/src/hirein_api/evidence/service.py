@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Literal
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hirein_api.atomic_requirements import AtomicOperator, parse_atomic_requirement
 from hirein_api.evidence.domain import EVIDENCE_GAP_SOURCE_PREFIX, EvidenceDecision
 from hirein_api.evidence.models import CandidateEvidenceResolution
 from hirein_api.evidence.repository import (
@@ -37,12 +36,6 @@ _RESOLVABLE_KINDS = {
     RequirementKind.EXPERIENCE,
     RequirementKind.RESPONSIBILITY,
 }
-
-_ATOMIC_KINDS = {
-    RequirementKind.SKILL,
-    RequirementKind.TOOL,
-}
-_MAX_ATOMIC_OPTIONS = 8
 
 
 class EvidenceProfileNotFoundError(Exception):
@@ -81,53 +74,16 @@ def is_human_resolvable(requirement: JobRequirement) -> bool:
     )
 
 
-def _clean_atom(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip(" \t\n,;|./")
-
-
 def _atomic_structure(
     requirement: JobRequirement,
-) -> tuple[Literal["ANY", "ALL"] | None, list[str]]:
-    """Return a conservative atomic decomposition for skills and tools only.
-
-    Experience/domain text can carry sentence-level context, so v1.10 does not
-    split it automatically. Skills and tools are constrained enough for simple
-    AND/OR lists to be safely exposed back to the user for explicit selection.
-    """
-
-    kind = RequirementKind(requirement.kind)
-    if kind not in _ATOMIC_KINDS:
+) -> tuple[AtomicOperator | None, list[str]]:
+    parsed = parse_atomic_requirement(
+        requirement.value,
+        RequirementKind(requirement.kind),
+    )
+    if parsed is None:
         return None, []
-
-    value = re.sub(r"\s+", " ", requirement.value).strip()
-    has_or = re.search(r"\s+ou\s+", value, flags=re.IGNORECASE) is not None
-    has_and = re.search(r"\s+e\s+", value, flags=re.IGNORECASE) is not None
-    has_list_separator = any(separator in value for separator in (",", ";", "|"))
-
-    operator: Literal["ANY", "ALL"]
-    if has_or:
-        operator = "ANY"
-        splitter = r"\s*(?:,|;|\|)\s*|\s+ou\s+"
-    elif has_and or has_list_separator:
-        operator = "ALL"
-        splitter = r"\s*(?:,|;|\|)\s*|\s+e\s+"
-    else:
-        return None, []
-
-    raw_parts = re.split(splitter, value, flags=re.IGNORECASE)
-    options: list[str] = []
-    seen: set[str] = set()
-    for raw_part in raw_parts:
-        part = _clean_atom(raw_part)
-        key = part.casefold()
-        if len(part) < 2 or key in seen:
-            continue
-        seen.add(key)
-        options.append(part)
-
-    if not 2 <= len(options) <= _MAX_ATOMIC_OPTIONS:
-        return None, []
-    return operator, options
+    return parsed.operator, list(parsed.options)
 
 
 def _question(requirement: JobRequirement) -> str:
@@ -208,7 +164,7 @@ def _normalize_resolution(
     selected: list[str] = []
     seen: set[str] = set()
     for raw_atom in payload.confirmed_atoms:
-        key = _clean_atom(raw_atom).casefold()
+        key = raw_atom.strip().casefold()
         if key not in allowed:
             raise EvidenceResolutionConflictError(
                 "confirmed atom does not belong to this requirement"
