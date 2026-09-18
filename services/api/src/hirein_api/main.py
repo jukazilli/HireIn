@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 from starlette.responses import JSONResponse, Response
 
-from hirein_api.blind_report import BlindReportError, build_blind_report, parse_job_ids
+from hirein_api.blind_report import build_blind_report, parse_job_ids
 from hirein_api.bootstrap_jobs import BootstrapJobsError, ingest_bootstrap_jobs
 from hirein_api.db import create_engine, create_session_factory
 from hirein_api.evals.routes import router as evals_router
@@ -39,10 +39,16 @@ async def _run_blind_holdout_report(raw_job_ids: str) -> None:
     await asyncio.sleep(1)
     try:
         job_ids = parse_job_ids(raw_job_ids)
-        report = await build_blind_report(session_factory, job_ids)
-        logger.warning("HIREIN_BLIND_HOLDOUT_REPORT=%s", report)
-    except (BlindReportError, ValueError):
-        logger.exception("Operational blind holdout report failed")
+        for job_id in job_ids:
+            report = await build_blind_report(session_factory, [job_id])
+            print(f"HIREIN_BLIND_HOLDOUT_REPORT={report}", flush=True)
+    except Exception as exc:
+        # This operational helper must never fail silently inside a detached
+        # startup task. Emit a bounded stdout line so Render captures it.
+        print(
+            f"HIREIN_BLIND_HOLDOUT_REPORT_ERROR={type(exc).__name__}:{exc}",
+            flush=True,
+        )
 
 
 async def _run_operational_job_bootstrap(raw_json: str) -> None:
