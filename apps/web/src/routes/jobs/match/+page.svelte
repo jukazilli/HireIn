@@ -290,30 +290,73 @@
                   {#if gap.resolution}
                     <div class="resolution-state" data-decision={gap.resolution.decision}>
                       <strong>{resolutionLabel[gap.resolution.decision]}</strong>
-                      {#if gap.resolution.decision === 'CONFIRMED'}<span>Conhecimento incorporado ao perfil para futuras análises.</span>{/if}
+                      {#if gap.resolution.confirmed_atoms.length > 0}
+                        <div class="confirmed-atom-list">
+                          {#each gap.resolution.confirmed_atoms as atom}<span>{atom}</span>{/each}
+                        </div>
+                      {:else if gap.resolution.decision === 'CONFIRMED'}
+                        <span>Conhecimento incorporado ao perfil para futuras análises.</span>
+                      {/if}
                     </div>
                   {/if}
 
-                  <div class="resolver-actions">
-                    <button
-                      class="btn btn-primary"
-                      type="button"
-                      disabled={evidenceSavingId === gap.requirement_id}
-                      onclick={() => resolveGap(gap, 'CONFIRMED')}
-                    >Tenho</button>
-                    <button
-                      class="btn btn-secondary"
-                      type="button"
-                      disabled={evidenceSavingId === gap.requirement_id}
-                      onclick={() => resolveGap(gap, 'NOT_HAVE')}
-                    >Não tenho</button>
-                    <button
-                      class="btn btn-ghost"
-                      type="button"
-                      disabled={evidenceSavingId === gap.requirement_id}
-                      onclick={() => resolveGap(gap, 'UNSURE')}
-                    >Não sei</button>
-                  </div>
+                  {#if gap.atomic_options.length > 0 && atomicEditingId === gap.requirement_id}
+                    <div class="atomic-editor">
+                      <div class="atomic-guidance">
+                        <strong>Selecione exatamente o que você possui</strong>
+                        <span>
+                          {gap.atomic_operator === 'ANY'
+                            ? 'Um ou mais itens podem atender este requisito. Marque tudo que se aplica a você.'
+                            : 'O requisito completo pede todos os itens. Selecione tudo que você realmente possui.'}
+                        </span>
+                      </div>
+                      <div class="atomic-options" role="group" aria-label="Itens confirmados">
+                        {#each gap.atomic_options as option}
+                          <button
+                            type="button"
+                            class:active={(atomicDrafts[gap.requirement_id] ?? []).includes(option)}
+                            aria-pressed={(atomicDrafts[gap.requirement_id] ?? []).includes(option)}
+                            onclick={() => toggleAtomicOption(gap, option)}
+                          >{option}</button>
+                        {/each}
+                      </div>
+                      <div class="resolver-actions">
+                        <button
+                          class="btn btn-primary"
+                          type="button"
+                          disabled={evidenceSavingId === gap.requirement_id || (atomicDrafts[gap.requirement_id] ?? []).length === 0}
+                          onclick={() => resolveGap(gap, 'CONFIRMED', atomicDrafts[gap.requirement_id] ?? [])}
+                        >Confirmar seleção</button>
+                        <button
+                          class="btn btn-ghost"
+                          type="button"
+                          disabled={evidenceSavingId === gap.requirement_id}
+                          onclick={() => (atomicEditingId = '')}
+                        >Cancelar</button>
+                      </div>
+                    </div>
+                  {:else}
+                    <div class="resolver-actions">
+                      <button
+                        class="btn btn-primary"
+                        type="button"
+                        disabled={evidenceSavingId === gap.requirement_id}
+                        onclick={() => gap.atomic_options.length > 0 ? beginAtomicSelection(gap) : resolveGap(gap, 'CONFIRMED')}
+                      >Tenho</button>
+                      <button
+                        class="btn btn-secondary"
+                        type="button"
+                        disabled={evidenceSavingId === gap.requirement_id}
+                        onclick={() => resolveGap(gap, 'NOT_HAVE')}
+                      >Não tenho</button>
+                      <button
+                        class="btn btn-ghost"
+                        type="button"
+                        disabled={evidenceSavingId === gap.requirement_id}
+                        onclick={() => resolveGap(gap, 'UNSURE')}
+                      >Não sei</button>
+                    </div>
+                  {/if}
                 </article>
               {/each}
             </div>
@@ -421,6 +464,17 @@
   .resolution-state span { color: var(--text-muted); font-size: .72rem; line-height: 1.45; }
   .resolution-state[data-decision='CONFIRMED'] { background: var(--success-soft); border-color: var(--success); }
   .resolution-state[data-decision='NOT_HAVE'] { background: var(--danger-soft); border-color: var(--danger); }
+  .resolution-state[data-decision='PARTIAL'] { background: var(--warning-soft); border-color: var(--warning); }
+  .confirmed-atom-list { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .confirmed-atom-list span { padding: .24rem .42rem; border-radius: 999px; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-size: .68rem; }
+  .atomic-editor { display: grid; gap: .7rem; padding: .8rem; border: 1px solid var(--brand-100); border-radius: var(--radius-sm); background: white; }
+  .atomic-guidance { display: grid; gap: .2rem; }
+  .atomic-guidance strong { font-size: .78rem; }
+  .atomic-guidance span { color: var(--text-muted); font-size: .72rem; line-height: 1.45; }
+  .atomic-options { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .atomic-options button { padding: .45rem .65rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-subtle); color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .74rem; }
+  .atomic-options button:hover { border-color: var(--brand-200); }
+  .atomic-options button.active { border-color: var(--brand-400); background: var(--brand-50); color: var(--brand-800); font-weight: 700; }
   .resolver-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
   .resolver-profile-note { margin-top: .25rem; }
   .resolver-profile-note a { margin-left: .3rem; font-weight: 700; }
