@@ -3,7 +3,6 @@
   import {
     api,
     type EvaluationErrorCategory,
-    type JobMatch,
     type PilotEvaluationUpsert,
     type PilotReviewJob
   } from '$lib/api';
@@ -22,16 +21,9 @@
     RANKING_WEIGHT: 'Peso / ranking', OTHER: 'Outro'
   };
 
-  const bandLabels: Record<string, string> = {
-    STRONG: 'Forte', GOOD: 'Boa', PARTIAL: 'Parcial', LOW: 'Baixa',
-    INSUFFICIENT_DATA: 'Dados insuficientes'
-  };
-
   let jobs: PilotReviewJob[] = [];
   let selectedJob: PilotReviewJob | null = null;
-  let match: JobMatch | null = null;
   let loading = true;
-  let loadingMatch = false;
   let saving = false;
   let error = '';
   let message = '';
@@ -41,8 +33,6 @@
   let blockerReal = false;
   let reason = '';
   let errorCategory: EvaluationErrorCategory | '' = '';
-
-  const matchCache = new Map<string, JobMatch>();
 
   $: reviewedCount = jobs.filter((job) => job.evaluation).length;
 
@@ -67,37 +57,11 @@
     }
   }
 
-  async function loadMatchForJob(jobId: string, failureMessage: string) {
-    const cached = matchCache.get(jobId);
-    if (cached) {
-      if (selectedJob?.job_id === jobId) {
-        match = cached;
-        loadingMatch = false;
-      }
-      return;
-    }
-
-    if (selectedJob?.job_id === jobId) loadingMatch = true;
-    try {
-      const nextMatch = await api.getJobMatch(jobId);
-      matchCache.set(jobId, nextMatch);
-      if (selectedJob?.job_id === jobId) match = nextMatch;
-    } catch (reasonValue) {
-      if (selectedJob?.job_id === jobId) {
-        error = reasonValue instanceof Error ? reasonValue.message : failureMessage;
-      }
-    } finally {
-      if (selectedJob?.job_id === jobId) loadingMatch = false;
-    }
-  }
-
   function selectJob(job: PilotReviewJob) {
-    selectedJob = job; fillEvaluation(job); match = null; error = ''; message = '';
-    if (!job.evaluation) {
-      loadingMatch = false;
-      return;
-    }
-    void loadMatchForJob(job.job_id, 'Não foi possível calcular o Match.');
+    selectedJob = job;
+    fillEvaluation(job);
+    error = '';
+    message = '';
   }
 
   async function saveEvaluation() {
@@ -106,7 +70,6 @@
 
     const jobId = selectedJob.job_id;
     saving = true; error = ''; message = '';
-    let savedSuccessfully = false;
     try {
       const payload: PilotEvaluationUpsert = {
         relevance: professionalFit,
@@ -120,21 +83,13 @@
         job.job_id === jobId ? { ...job, evaluation: saved } : job
       );
       selectedJob = jobs.find((job) => job.job_id === jobId) ?? selectedJob;
-      matchCache.delete(jobId);
-      message = 'Sua avaliação foi salva. O Match está sendo revelado sem bloquear sua navegação.';
-      savedSuccessfully = true;
+      message = 'Sua avaliação foi salva. O Match continua oculto nesta etapa do holdout.';
     } catch (reasonValue) {
       error = reasonValue instanceof Error ? reasonValue.message : 'Não foi possível salvar a avaliação.';
     } finally {
       saving = false;
     }
 
-    if (savedSuccessfully) {
-      void loadMatchForJob(
-        jobId,
-        'A avaliação foi salva, mas não foi possível revelar o Match.'
-      );
-    }
   }
 
   onMount(refresh);
@@ -151,8 +106,8 @@
       <p class="eyebrow">Revisão humana</p>
       <h1 class="page-title">Primeiro a sua opinião. Depois, a do algoritmo.</h1>
       <p class="page-lead">
-        Nas vagas pendentes, o Match fica oculto até você salvar sua avaliação. No Blind #4 separamos
-        aderência profissional da sua vontade real de se candidatar para não misturar capacidade com preferência.
+        Nesta etapa do holdout, o Match fica totalmente oculto. Avalie apenas Professional Fit, Apply Intent
+        e blocker. O algoritmo será revelado somente depois que o lote humano estiver concluído.
       </p>
     </div>
     <aside class="context-note">
@@ -225,56 +180,16 @@
             <h2>{selectedJob.title}</h2>
             <p>{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
           </div>
-          <div class="algorithm-read">
-            <span>Professional Fit</span>
-            {#if !selectedJob.evaluation}
-              <strong>?</strong>
-              <small>Revelado após salvar</small>
-            {:else if loadingMatch}
-              <strong>…</strong>
-              <small>Analisando</small>
-            {:else if match}
-              <strong>{(match.professional_fit?.score ?? match.score) === null ? '—' : `${match.professional_fit?.score ?? match.score}%`}</strong>
-              <small>
-                {bandLabels[match.professional_fit?.band ?? match.band] ?? (match.professional_fit?.band ?? match.band)}
-                · confiança {match.professional_fit?.confidence ?? match.evaluation_coverage}%
-              </small>
-            {:else}
-              <strong>—</strong>
-            {/if}
+          <div class="algorithm-read blind-lock">
+            <span>Professional Fit do algoritmo</span>
+            <strong>?</strong>
+            <small>Oculto durante a revisão humana</small>
           </div>
         </div>
 
-        {#if match}
-          <div class="work-section dimension-summary">
-            <div class="dimension-card">
-              <span>Professional Fit</span>
-              <strong>{(match.professional_fit?.score ?? match.score) === null ? '—' : `${match.professional_fit?.score ?? match.score}%`}</strong>
-              <small>Competência profissional · confiança {match.professional_fit?.confidence ?? match.evaluation_coverage}%</small>
-            </div>
-            <div class="dimension-card" class:blocked={match.opportunity_compatibility?.blocked}>
-              <span>Opportunity Compatibility</span>
-              <strong>{match.opportunity_compatibility?.score === null || match.opportunity_compatibility?.score === undefined ? '—' : `${match.opportunity_compatibility.score}%`}</strong>
-              <small>
-                {match.opportunity_compatibility?.blocked
-                  ? `Blocker objetivo: ${match.opportunity_compatibility.blockers.join(', ')}`
-                  : `Preferências avaliadas: ${match.opportunity_compatibility?.coverage ?? 0}%`}
-              </small>
-            </div>
-            <div class="dimension-card">
-              <span>Apply Intent</span>
-              <strong>{selectedJob.evaluation?.apply_intent ?? '—'}{selectedJob.evaluation?.apply_intent !== null && selectedJob.evaluation?.apply_intent !== undefined ? '/4' : ''}</strong>
-              <small>Declarado por você; não é inferido pelo Match.</small>
-            </div>
-          </div>
-
-          <div class="work-section match-readout">
-            <div class="readout-item"><span>Confiança da evidência</span><strong>{match.professional_fit?.confidence ?? match.evaluation_coverage}%</strong></div>
-            <div class="readout-item"><span>Obrigatórios atendidos</span><strong>{match.matched_required}</strong></div>
-            <div class="readout-item"><span>Gaps obrigatórios</span><strong>{match.missing_required}</strong></div>
-            <div class="readout-item"><span>Não avaliáveis</span><strong>{match.unknown_requirements}</strong></div>
-          </div>
-        {/if}
+        <div class="status-notice blind-protocol-note">
+          Holdout protegido: esta tela não calcula nem revela o Match. Termine as avaliações humanas primeiro.
+        </div>
 
         <div class="work-section human-read">
           <div class="section-head">
@@ -339,11 +254,11 @@
           <div class="action-row save-review">
             <span class="muted small">
               {selectedJob.evaluation
-                ? 'O Match já foi revelado. Você pode classificar o erro e atualizar suas respostas.'
-                : 'Para vagas novas, Fit e Intent são obrigatórios. O Match permanece oculto até salvar.'}
+                ? 'Avaliação humana salva. O Match continua oculto nesta tela até o lote ser encerrado.'
+                : 'Fit e Intent são obrigatórios. O Match não será calculado nesta etapa.'}
             </span>
             <button class="btn btn-primary" type="button" disabled={saving || professionalFit === null || (!selectedJob.evaluation && applyIntent === null)} onclick={saveEvaluation}>
-              {saving ? 'Salvando avaliação…' : selectedJob.evaluation ? 'Atualizar minha avaliação' : 'Salvar e revelar Match'}
+              {saving ? 'Salvando avaliação…' : selectedJob.evaluation ? 'Atualizar minha avaliação' : 'Salvar avaliação'}
             </button>
           </div>
         </div>

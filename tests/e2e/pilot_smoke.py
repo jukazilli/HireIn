@@ -124,12 +124,23 @@ def get_created_job_id(page: Page) -> str:
     return str(created["id"])
 
 
+def assert_match_locked_before_review(page: Page) -> None:
+    page.goto(f"{WEB_BASE_URL}/jobs/match", wait_until="domcontentloaded")
+    expect(page.get_by_role("heading", name="Qual vaga você quer entender?")).to_be_visible()
+
+    job_button = page.get_by_role("button").filter(has_text=COMPANY_NAME)
+    expect(job_button).to_have_count(1)
+    expect(job_button).to_be_disabled()
+    expect(job_button).to_contain_text("Avalie primeiro")
+
+
 def calculate_match(page: Page) -> None:
     page.goto(f"{WEB_BASE_URL}/jobs/match", wait_until="domcontentloaded")
     expect(page.get_by_role("heading", name="Qual vaga você quer entender?")).to_be_visible()
 
     job_button = page.get_by_role("button").filter(has_text=COMPANY_NAME)
     expect(job_button).to_have_count(1)
+    expect(job_button).to_be_enabled()
     job_button.click()
 
     expect(page.get_by_text("Confiança da evidência", exact=True)).to_be_visible()
@@ -171,7 +182,7 @@ def save_human_review(page: Page) -> None:
     expect(
         page.get_by_role("heading", name="Quanto você realmente gostaria de se candidatar?")
     ).to_be_visible()
-    expect(page.get_by_text("Revelado após salvar", exact=True)).to_be_visible()
+    expect(page.get_by_text("Oculto durante a revisão humana", exact=True)).to_be_visible()
     expect(page.get_by_text("Confiança da evidência", exact=True)).to_have_count(0)
     expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_have_count(0)
 
@@ -182,14 +193,12 @@ def save_human_review(page: Page) -> None:
     page.get_by_label(re.compile(r"^Por quê\?"), exact=False).fill(
         "Fit alto e intenção boa para a oportunidade sintética do smoke test."
     )
-    page.get_by_role("button", name="Salvar e revelar Match").click()
+    page.get_by_role("button", name="Salvar avaliação").click()
 
     expect(page.get_by_text(re.compile(r"^Sua avaliação foi salva\."))).to_be_visible()
-    expect(page.get_by_text("Confiança da evidência", exact=True)).to_be_visible()
-    expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_be_visible()
-    expect(page.get_by_text("Opportunity Compatibility", exact=True)).to_be_visible()
-    expect(page.get_by_text("Declarado por você; não é inferido pelo Match.", exact=True)).to_be_visible()
-    expect(page.get_by_text(re.compile(r"^Professional Fit mede o quanto"))).to_be_visible()
+    expect(page.get_by_text("Confiança da evidência", exact=True)).to_have_count(0)
+    expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_have_count(0)
+    expect(page.get_by_text("Oculto durante a revisão humana", exact=True)).to_be_visible()
 
     page.reload(wait_until="domcontentloaded")
     queue_button = page.get_by_role("button").filter(has_text=COMPANY_NAME)
@@ -240,10 +249,11 @@ def run() -> None:
             assert_profile_persisted(page)
             create_job(page)
             job_id = get_created_job_id(page)
-            calculate_match(page)
-            assert_match_api(page, job_id)
+            assert_match_locked_before_review(page)
             save_human_review(page)
             assert_review_api(page, job_id)
+            calculate_match(page)
+            assert_match_api(page, job_id)
             logout(page)
 
             assert not page_errors, f"Browser page errors detected: {page_errors}"
