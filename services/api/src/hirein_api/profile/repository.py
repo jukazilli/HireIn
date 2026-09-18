@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -51,7 +51,10 @@ async def clear_profile_children(session: AsyncSession, profile_id: uuid.UUID) -
     await session.execute(
         delete(CandidateFact).where(
             CandidateFact.profile_id == profile_id,
-            CandidateFact.source_ref.not_like(f"{EVIDENCE_GAP_SOURCE_PREFIX}%"),
+            or_(
+                CandidateFact.source_ref.is_(None),
+                CandidateFact.source_ref.not_like(f"{EVIDENCE_GAP_SOURCE_PREFIX}%"),
+            ),
         )
     )
     await session.execute(
