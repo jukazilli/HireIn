@@ -5,10 +5,9 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import or_, select
-
-from hirein_api.atomic_requirements import AtomicOperator, parse_atomic_requirement
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hirein_api.atomic_requirements import AtomicOperator, parse_atomic_requirement
 from hirein_api.evidence.domain import EVIDENCE_GAP_SOURCE_PREFIX, EvidenceDecision
 from hirein_api.evidence.models import CandidateEvidenceResolution
 from hirein_api.evidence.repository import (
