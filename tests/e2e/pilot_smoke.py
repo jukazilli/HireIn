@@ -134,8 +134,11 @@ def calculate_match(page: Page) -> None:
 
     expect(page.get_by_text("Confiança da evidência", exact=True)).to_be_visible()
     expect(page.get_by_text("Competência profissional entre evidências avaliadas", exact=True)).to_be_visible()
-    expect(page.get_by_text("Opportunity Compatibility", exact=True)).to_be_visible()
-    expect(page.get_by_text("Apply Intent", exact=True)).to_be_visible()
+    dimension_strip = page.locator(".dimension-strip")
+    expect(
+        dimension_strip.get_by_text("Opportunity Compatibility", exact=True)
+    ).to_be_visible()
+    expect(dimension_strip.get_by_text("Apply Intent", exact=True)).to_be_visible()
 
 
 def assert_match_api(page: Page, job_id: str) -> None:
