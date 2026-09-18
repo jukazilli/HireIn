@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from sqlalchemy import or_, select
 
-from hirein_api.atomic_requirements import parse_atomic_requirement
+from hirein_api.atomic_requirements import AtomicOperator, parse_atomic_requirement
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirein_api.evidence.domain import EVIDENCE_GAP_SOURCE_PREFIX, EvidenceDecision
@@ -77,7 +77,7 @@ def is_human_resolvable(requirement: JobRequirement) -> bool:
 
 def _atomic_structure(
     requirement: JobRequirement,
-) -> tuple[str | None, list[str]]:
+) -> tuple[AtomicOperator | None, list[str]]:
     parsed = parse_atomic_requirement(
         requirement.value,
         RequirementKind(requirement.kind),
