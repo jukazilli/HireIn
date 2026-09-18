@@ -3,6 +3,7 @@
   import { api, type EvidenceDecision, type EvidenceGapItem, type EvidenceGapList, type JobMatch, type JobSummary } from '$lib/api';
 
   let jobs: JobSummary[] = [];
+  let reviewedJobIds = new Set<string>();
   let selectedJob: JobSummary | null = null;
   let result: JobMatch | null = null;
   let loading = true;
@@ -35,7 +36,14 @@
 
   async function loadJobs() {
     try {
-      jobs = await api.listJobs();
+      const [jobRows, reviewRows] = await Promise.all([
+        api.listJobs(),
+        api.listReviewJobs()
+      ]);
+      jobs = jobRows;
+      reviewedJobIds = new Set(
+        reviewRows.filter((job) => job.evaluation).map((job) => job.job_id)
+      );
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível carregar as vagas.';
     } finally {
@@ -53,6 +61,11 @@
   }
 
   async function calculate(job: JobSummary) {
+    if (!reviewedJobIds.has(job.id)) {
+      error = 'Avalie esta vaga em Revisar vagas antes de abrir o Match.';
+      return;
+    }
+
     selectedJob = job;
     result = null;
     evidenceGaps = null;
@@ -145,8 +158,8 @@
       <p class="eyebrow">HireIn Match</p>
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
-        Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. No v1.11, requisitos compostos preservam o contexto semântico ao serem quebrados em conceitos atômicos, evitando fatos genéricos como “escrita” ou “levantamento”.
+        O Match só é liberado depois que a avaliação humana da vaga estiver salva. Isso protege o holdout contra
+        contaminação acidental. No v1.11, requisitos compostos preservam o contexto semântico ao serem quebrados em conceitos atômicos.
       </p>
     </div>
     <aside class="context-note">
@@ -162,7 +175,7 @@
       <div class="section-head-copy">
         <p class="section-kicker">Escolha a oportunidade</p>
         <h2 class="section-title">Qual vaga você quer entender?</h2>
-        <p class="section-description">O HireIn calcula uma vaga por vez para manter a leitura focada e auditável.</p>
+        <p class="section-description">Vagas ainda não avaliadas ficam bloqueadas. Primeiro finalize Fit + Intent em Revisar vagas.</p>
       </div>
       <span class="section-meta">{jobs.length} vaga{jobs.length === 1 ? '' : 's'}</span>
     </div>
@@ -174,7 +187,14 @@
     {:else}
       <div class="opportunity-list job-picker">
         {#each jobs as job}
-          <button class="opportunity-card" class:selected={selectedJob?.id === job.id} type="button" disabled={calculating} onclick={() => calculate(job)}>
+          <button
+            class="opportunity-card"
+            class:selected={selectedJob?.id === job.id}
+            class:holdout-locked={!reviewedJobIds.has(job.id)}
+            type="button"
+            disabled={calculating || !reviewedJobIds.has(job.id)}
+            onclick={() => calculate(job)}
+          >
             <div>
               <p class="opportunity-company">{job.company_name}</p>
               <h3 class="opportunity-title">{job.title}</h3>
@@ -182,7 +202,13 @@
             </div>
             <div class="opportunity-side">
               <span>{job.requirement_count} requisitos</span>
-              <strong class="match-link">{calculating && selectedJob?.id === job.id ? 'Analisando…' : 'Ver compatibilidade'}</strong>
+              <strong class="match-link">
+                {!reviewedJobIds.has(job.id)
+                  ? 'Avalie primeiro'
+                  : calculating && selectedJob?.id === job.id
+                    ? 'Analisando…'
+                    : 'Ver compatibilidade'}
+              </strong>
             </div>
           </button>
         {/each}
@@ -479,6 +505,8 @@
   .resolver-profile-note { margin-top: .25rem; }
   .resolver-profile-note a { margin-left: .3rem; font-weight: 700; }
   .match-link { color: var(--brand-600); font-size: .78rem; font-weight: 700; }
+  .opportunity-card.holdout-locked { opacity: .58; cursor: not-allowed; background: var(--surface-subtle); }
+  .opportunity-card.holdout-locked .match-link { color: var(--text-muted); }
   .result-space { display: grid; gap: 1rem; margin-top: 1rem; }
   .selected-title { margin: .18rem 0 .35rem; font-size: clamp(1.6rem, 3vw, 2.3rem); }
   .selected-meta { margin: 0; color: var(--text-muted); font-size: .84rem; }
