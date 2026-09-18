@@ -129,6 +129,17 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
     assert result["preference_score"] == 100
     assert result["score"] == 100
     assert result["band"] == "STRONG"
+    assert result["professional_fit"] == {
+        "score": 100,
+        "confidence": 75,
+        "band": "STRONG",
+    }
+    assert result["opportunity_compatibility"] == {
+        "score": 100,
+        "coverage": 100,
+        "blocked": False,
+        "blockers": [],
+    }
     assert result["matched_required"] == 1
     assert result["missing_preferred"] == 0
     assert result["unknown_requirements"] == 1
@@ -151,6 +162,9 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "safe_professional_concept_bridges_enabled",
         "location_blocker_requires_explicit_presence",
         "state_level_location_preferences_enabled",
+        "professional_fit_separated_from_opportunity_compatibility",
+        "legacy_score_aliases_professional_fit_v16",
+        "apply_intent_is_user_owned_not_inferred_by_match",
     ]
 
 
@@ -307,8 +321,13 @@ def test_location_outside_targets_blocks_when_relocation_is_false() -> None:
     )
     assert result["requirement_score"] == 100
     assert location["status"] == "CONFLICT"
-    assert result["score"] == 0
-    assert result["band"] == "LOW"
+    # Match v1.6 preserves professional competence even when the opportunity
+    # itself is not viable for the candidate.
+    assert result["score"] == 100
+    assert result["band"] == "STRONG"
+    assert result["professional_fit"]["score"] == 100
+    assert result["opportunity_compatibility"]["blocked"] is True
+    assert result["opportunity_compatibility"]["blockers"] == ["LOCATION"]
     assert "location_preference_blocker" in result["warnings"]
 
 

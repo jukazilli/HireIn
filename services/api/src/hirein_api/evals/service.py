@@ -18,7 +18,6 @@ from hirein_api.evals.schemas import (
 )
 from hirein_api.jobs.repository import get_job, list_jobs
 from hirein_api.match.current import calculate_job_match
-from hirein_api.match.service_v12 import LOCATION_BLOCKER_WARNING
 
 
 class EvaluationJobNotFoundError(Exception):
@@ -99,16 +98,31 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
     samples: list[RankingSample] = []
     for row in evaluation_rows:
         match = await calculate_job_match(session, row.job_id)
+        professional_fit = match.professional_fit
         samples.append(
             RankingSample(
                 key=str(row.job_id),
                 relevance=row.relevance,
-                score=match.score,
-                coverage=match.evaluation_coverage,
-                band=match.band.value,
+                score=(
+                    professional_fit.score
+                    if professional_fit is not None
+                    else match.score
+                ),
+                coverage=(
+                    professional_fit.confidence
+                    if professional_fit is not None
+                    else match.evaluation_coverage
+                ),
+                band=(
+                    professional_fit.band.value
+                    if professional_fit is not None
+                    else match.band.value
+                ),
                 blocker_real=row.blocker_real,
                 reason=row.reason,
-                algorithm_blocked=LOCATION_BLOCKER_WARNING in match.warnings,
+                # Opportunity blockers are intentionally excluded from
+                # Professional Fit benchmark ranking in Match v1.6.
+                algorithm_blocked=False,
             )
         )
 

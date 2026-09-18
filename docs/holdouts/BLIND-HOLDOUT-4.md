@@ -132,11 +132,11 @@ A interface deve priorizar `Dados insuficientes` / confiança e deixar o percent
 3. Separar mais claramente `Professional Fit` de restrições da oportunidade, como localização, remuneração, modalidade e contrato.
 4. Manter blockers explícitos como dimensão independente em vez de tratá-los como prova de baixa capacidade profissional.
 5. Melhorar composição de evidências confirmadas para requisitos semânticos/compostos antes de ampliar o uso do score bruto.
-6. Adicionar proteção de UX para combinações humanas logicamente contraditórias entre `Apply Intent` e `blocker_real`, sem corrigir a resposta automaticamente.
+6. Adicionar proteção de UX para combinações humanas logicamente contraditórias entre `Apply Intent` e `blocker_real`. Uma inconsistência do lote foi corrigida somente após confirmação explícita do usuário; as métricas de Professional Fit não foram afetadas.
 
-## Próxima iteração proposta
+## Próxima iteração — Match v1.6
 
-A próxima evolução do matcher deve trabalhar a separação de dimensões antes de qualquer ajuste de pesos:
+A evolução aprovada do matcher trabalha a separação de dimensões antes de qualquer ajuste de pesos:
 
 ```text
 professional_fit_score

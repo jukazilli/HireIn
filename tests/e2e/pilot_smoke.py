@@ -132,8 +132,13 @@ def calculate_match(page: Page) -> None:
     expect(job_button).to_have_count(1)
     job_button.click()
 
-    expect(page.get_by_text("Confiança da análise", exact=True)).to_be_visible()
-    expect(page.get_by_text("Aderência entre evidências avaliadas", exact=True)).to_be_visible()
+    expect(page.get_by_text("Confiança da evidência", exact=True)).to_be_visible()
+    expect(page.get_by_text("Competência profissional entre evidências avaliadas", exact=True)).to_be_visible()
+    dimension_strip = page.locator(".dimension-strip")
+    expect(
+        dimension_strip.get_by_text("Opportunity Compatibility", exact=True)
+    ).to_be_visible()
+    expect(dimension_strip.get_by_text("Apply Intent", exact=True)).to_be_visible()
 
 
 def assert_match_api(page: Page, job_id: str) -> None:
@@ -142,6 +147,10 @@ def assert_match_api(page: Page, job_id: str) -> None:
     match = response.json()
     assert match["job_id"] == job_id
     assert match["evaluation_coverage"] > 0
+    assert match["professional_fit"] is not None
+    assert match["professional_fit"]["confidence"] == match["evaluation_coverage"]
+    assert match["professional_fit"]["score"] == match["score"]
+    assert match["opportunity_compatibility"] is not None
     assert len(match["requirement_results"]) == 1
     assert match["requirement_results"][0]["value"] == "Gestão de Projetos"
 
@@ -163,7 +172,7 @@ def save_human_review(page: Page) -> None:
         page.get_by_role("heading", name="Quanto você realmente gostaria de se candidatar?")
     ).to_be_visible()
     expect(page.get_by_text("Revelado após salvar", exact=True)).to_be_visible()
-    expect(page.get_by_text("Confiança da análise", exact=True)).to_have_count(0)
+    expect(page.get_by_text("Confiança da evidência", exact=True)).to_have_count(0)
     expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_have_count(0)
 
     fit_group = page.get_by_role("group", name="Professional Fit de zero a quatro")
@@ -176,8 +185,10 @@ def save_human_review(page: Page) -> None:
     page.get_by_role("button", name="Salvar e revelar Match").click()
 
     expect(page.get_by_text(re.compile(r"^Sua avaliação foi salva\."))).to_be_visible()
-    expect(page.get_by_text("Confiança da análise", exact=True)).to_be_visible()
+    expect(page.get_by_text("Confiança da evidência", exact=True)).to_be_visible()
     expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_be_visible()
+    expect(page.get_by_text("Opportunity Compatibility", exact=True)).to_be_visible()
+    expect(page.get_by_text("Declarado por você; não é inferido pelo Match.", exact=True)).to_be_visible()
     expect(page.get_by_text(re.compile(r"^Professional Fit mede o quanto"))).to_be_visible()
 
     page.reload(wait_until="domcontentloaded")
