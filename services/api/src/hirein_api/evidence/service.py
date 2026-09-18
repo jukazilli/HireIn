@@ -4,6 +4,7 @@ import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Literal
 
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,7 +85,9 @@ def _clean_atom(value: str) -> str:
     return re.sub(r"\s+", " ", value).strip(" \t\n,;|./")
 
 
-def _atomic_structure(requirement: JobRequirement) -> tuple[str | None, list[str]]:
+def _atomic_structure(
+    requirement: JobRequirement,
+) -> tuple[Literal["ANY", "ALL"] | None, list[str]]:
     """Return a conservative atomic decomposition for skills and tools only.
 
     Experience/domain text can carry sentence-level context, so v1.10 does not
@@ -101,6 +104,7 @@ def _atomic_structure(requirement: JobRequirement) -> tuple[str | None, list[str
     has_and = re.search(r"\s+e\s+", value, flags=re.IGNORECASE) is not None
     has_list_separator = any(separator in value for separator in (",", ";", "|"))
 
+    operator: Literal["ANY", "ALL"]
     if has_or:
         operator = "ANY"
         splitter = r"\s*(?:,|;|\|)\s*|\s+ou\s+"
