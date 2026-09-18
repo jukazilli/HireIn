@@ -288,15 +288,15 @@ def _compound_components(requirement: JobRequirement) -> list[str]:
     if "," not in requirement.value and ";" not in requirement.value:
         return []
 
-    normalized = re.sub(r"\s*[,;|]\s*", " | ", value)
+    normalized = re.sub(r"\s*[,;|]\s*", " | ", requirement.value)
     parts: list[str] = []
     for chunk in normalized.split("|"):
-        chunk = chunk.strip()
-        if not chunk:
+        canonical_chunk = _canonical(chunk)
+        if not canonical_chunk:
             continue
         subparts = [
             item.strip()
-            for item in re.split(r"\s+e\s+", chunk)
+            for item in re.split(r"\s+e\s+", canonical_chunk)
             if item.strip()
         ]
         parts.extend(subparts)
