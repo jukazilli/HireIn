@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirein_api.evidence.domain import EVIDENCE_GAP_SOURCE_PREFIX, EvidenceDecision
@@ -36,6 +37,12 @@ _RESOLVABLE_KINDS = {
     RequirementKind.RESPONSIBILITY,
 }
 
+_ATOMIC_KINDS = {
+    RequirementKind.SKILL,
+    RequirementKind.TOOL,
+}
+_MAX_ATOMIC_OPTIONS = 8
+
 
 class EvidenceProfileNotFoundError(Exception):
     """Raised when the primary candidate profile does not exist."""
@@ -50,7 +57,7 @@ class EvidenceRequirementNotFoundError(Exception):
 
 
 class EvidenceResolutionConflictError(Exception):
-    """Raised when a requirement cannot be resolved through the v0 human flow."""
+    """Raised when a requirement cannot be resolved through the human flow."""
 
 
 def _has_structured_qualifier(requirement: JobRequirement) -> bool:
@@ -73,9 +80,61 @@ def is_human_resolvable(requirement: JobRequirement) -> bool:
     )
 
 
+def _clean_atom(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip(" \t\n,;|./")
+
+
+def _atomic_structure(requirement: JobRequirement) -> tuple[str | None, list[str]]:
+    """Return a conservative atomic decomposition for skills and tools only.
+
+    Experience/domain text can carry sentence-level context, so v1.10 does not
+    split it automatically. Skills and tools are constrained enough for simple
+    AND/OR lists to be safely exposed back to the user for explicit selection.
+    """
+
+    kind = RequirementKind(requirement.kind)
+    if kind not in _ATOMIC_KINDS:
+        return None, []
+
+    value = re.sub(r"\s+", " ", requirement.value).strip()
+    has_or = re.search(r"\s+ou\s+", value, flags=re.IGNORECASE) is not None
+    has_and = re.search(r"\s+e\s+", value, flags=re.IGNORECASE) is not None
+    has_list_separator = any(separator in value for separator in (",", ";", "|"))
+
+    if has_or:
+        operator = "ANY"
+        splitter = r"\s*(?:,|;|\|)\s*|\s+ou\s+"
+    elif has_and or has_list_separator:
+        operator = "ALL"
+        splitter = r"\s*(?:,|;|\|)\s*|\s+e\s+"
+    else:
+        return None, []
+
+    raw_parts = re.split(splitter, value, flags=re.IGNORECASE)
+    options: list[str] = []
+    seen: set[str] = set()
+    for raw_part in raw_parts:
+        part = _clean_atom(raw_part)
+        key = part.casefold()
+        if len(part) < 2 or key in seen:
+            continue
+        seen.add(key)
+        options.append(part)
+
+    if not 2 <= len(options) <= _MAX_ATOMIC_OPTIONS:
+        return None, []
+    return operator, options
+
+
 def _question(requirement: JobRequirement) -> str:
     kind = RequirementKind(requirement.kind)
     value = requirement.value
+    operator, options = _atomic_structure(requirement)
+    if options:
+        if operator == "ANY":
+            return "Quais destes itens você já utilizou ou aplicou profissionalmente?"
+        return "Quais destes itens você possui ou já aplicou profissionalmente?"
+
     if kind == RequirementKind.TOOL:
         return f'Você já utilizou "{value}" em um contexto profissional real?'
     if kind == RequirementKind.DOMAIN:
@@ -94,15 +153,11 @@ def _fact_kind(requirement: JobRequirement) -> FactKind:
     if kind == RequirementKind.DOMAIN:
         return FactKind.DOMAIN
     if kind == RequirementKind.SKILL:
-        # CandidateFact does not have a SKILL kind. OTHER marks a canonical
-        # semantic skill learned from the resolver without pretending that the
-        # user's click described a concrete responsibility.
         return FactKind.OTHER
     return FactKind.RESPONSIBILITY
 
 
 def _semantic_fact_value(requirement: JobRequirement) -> str:
-    """Persist the requirement concept, never the user's free-form wording."""
     return requirement.value.strip()
 
 
@@ -114,9 +169,62 @@ def _resolution_response(
         requirement_id=resolution.job_requirement_id,
         decision=EvidenceDecision(resolution.decision),
         evidence_text=resolution.evidence_text,
+        confirmed_atoms=list(resolution.confirmed_atoms or []),
         created_at=resolution.created_at,
         updated_at=resolution.updated_at,
     )
+
+
+def _normalize_resolution(
+    requirement: JobRequirement,
+    payload: EvidenceResolutionUpsert,
+) -> tuple[EvidenceDecision, list[str]]:
+    operator, options = _atomic_structure(requirement)
+
+    if payload.decision in {EvidenceDecision.NOT_HAVE, EvidenceDecision.UNSURE}:
+        return payload.decision, []
+
+    if payload.decision == EvidenceDecision.PARTIAL and not options:
+        raise EvidenceResolutionConflictError(
+            "partial evidence only applies to an atomic compound requirement"
+        )
+
+    if not options:
+        if payload.confirmed_atoms:
+            raise EvidenceResolutionConflictError(
+                "this requirement does not expose atomic evidence options"
+            )
+        if payload.decision != EvidenceDecision.CONFIRMED:
+            raise EvidenceResolutionConflictError(
+                "simple requirements accept confirmed, not-have or unsure"
+            )
+        return EvidenceDecision.CONFIRMED, []
+
+    allowed = {option.casefold(): option for option in options}
+    selected: list[str] = []
+    seen: set[str] = set()
+    for raw_atom in payload.confirmed_atoms:
+        key = _clean_atom(raw_atom).casefold()
+        if key not in allowed:
+            raise EvidenceResolutionConflictError(
+                "confirmed atom does not belong to this requirement"
+            )
+        if key not in seen:
+            selected.append(allowed[key])
+            seen.add(key)
+
+    if not selected:
+        raise EvidenceResolutionConflictError(
+            "select at least one atomic item before confirming"
+        )
+
+    if payload.decision == EvidenceDecision.PARTIAL:
+        return EvidenceDecision.PARTIAL, selected
+
+    if operator == "ALL" and len(selected) < len(options):
+        return EvidenceDecision.PARTIAL, selected
+
+    return EvidenceDecision.CONFIRMED, selected
 
 
 async def list_evidence_gaps(
@@ -134,8 +242,6 @@ async def list_evidence_gaps(
 
     baseline = await calculate_job_match_v17(session, job_id)
 
-    # Local import avoids an import cycle: Match v1.8 depends on evidence
-    # resolutions, while this endpoint also reports the current v1.8 confidence.
     from hirein_api.match.current import calculate_job_match
 
     current = await calculate_job_match(session, job_id)
@@ -170,6 +276,7 @@ async def list_evidence_gaps(
             profile_only_unknown_count += 1
             continue
 
+        operator, atomic_options = _atomic_structure(requirement)
         coverage_impact = (
             round((item.weight / total_weight) * 100)
             if total_weight > 0
@@ -184,6 +291,8 @@ async def list_evidence_gaps(
                 weight=item.weight,
                 coverage_impact=coverage_impact,
                 question=_question(requirement),
+                atomic_operator=operator,
+                atomic_options=atomic_options,
                 partial_evidence=item.evidence,
                 resolution=resolutions.get(item.requirement_id),
             )
@@ -223,47 +332,51 @@ async def list_evidence_gaps(
     )
 
 
-async def _sync_candidate_fact(
+async def _sync_candidate_facts(
     session: AsyncSession,
     profile_id: uuid.UUID,
     requirement: JobRequirement,
     resolution: CandidateEvidenceResolution,
 ) -> None:
-    source_ref = f"{EVIDENCE_GAP_SOURCE_PREFIX}{resolution.id}"
+    base_source_ref = f"{EVIDENCE_GAP_SOURCE_PREFIX}{resolution.id}"
     statement = select(CandidateFact).where(
         CandidateFact.profile_id == profile_id,
         CandidateFact.experience_id.is_(None),
-        CandidateFact.source_ref == source_ref,
+        or_(
+            CandidateFact.source_ref == base_source_ref,
+            CandidateFact.source_ref.like(f"{base_source_ref}:%"),
+        ),
     )
-    existing = await session.scalar(statement)
+    existing = list((await session.scalars(statement)).all())
+    for fact in existing:
+        await session.delete(fact)
 
-    if EvidenceDecision(resolution.decision) != EvidenceDecision.CONFIRMED:
-        if existing is not None:
-            await session.delete(existing)
+    decision = EvidenceDecision(resolution.decision)
+    if decision not in {EvidenceDecision.CONFIRMED, EvidenceDecision.PARTIAL}:
         return
 
-    semantic_value = _semantic_fact_value(requirement)
+    atomic_values = list(resolution.confirmed_atoms or [])
+    values = atomic_values or [_semantic_fact_value(requirement)]
     now = datetime.now(UTC)
-    if existing is None:
+
+    for index, value in enumerate(values):
+        source_ref = (
+            f"{base_source_ref}:atom:{index}"
+            if atomic_values
+            else base_source_ref
+        )
         session.add(
             CandidateFact(
                 profile_id=profile_id,
                 experience_id=None,
                 kind=_fact_kind(requirement).value,
-                value=semantic_value,
+                value=value,
                 source_type=FactSource.USER_CONFIRMED.value,
                 source_ref=source_ref,
                 confidence=Decimal("1.000"),
                 confirmed_at=now,
             )
         )
-        return
-
-    existing.kind = _fact_kind(requirement).value
-    existing.value = semantic_value
-    existing.source_type = FactSource.USER_CONFIRMED.value
-    existing.confidence = Decimal("1.000")
-    existing.confirmed_at = now
 
 
 async def upsert_evidence_resolution(
@@ -292,7 +405,7 @@ async def upsert_evidence_resolution(
     if not is_human_resolvable(requirement):
         raise EvidenceResolutionConflictError(
             "this requirement needs structured profile data and cannot "
-            "be resolved by free-text evidence"
+            "be resolved by a simple confirmation"
         )
 
     resolution = await get_resolution(session, profile_id, requirement_id)
@@ -314,15 +427,22 @@ async def upsert_evidence_resolution(
             "human evidence resolution only applies to requirements still UNKNOWN in Match v1.7"
         )
 
+    normalized_decision, confirmed_atoms = _normalize_resolution(
+        requirement,
+        payload,
+    )
+
     if resolution is None:
         resolution = CandidateEvidenceResolution(
             profile_id=profile_id,
             job_requirement_id=requirement_id,
-            decision=payload.decision.value,
+            decision=normalized_decision.value,
+            confirmed_atoms=[],
         )
         session.add(resolution)
 
-    resolution.decision = payload.decision.value
+    resolution.decision = normalized_decision.value
+    resolution.confirmed_atoms = confirmed_atoms
     resolution.evidence_text = (
         payload.evidence_text.strip()
         if payload.evidence_text is not None
@@ -331,7 +451,7 @@ async def upsert_evidence_resolution(
     resolution.updated_at = datetime.now(UTC)
     await session.flush()
 
-    await _sync_candidate_fact(
+    await _sync_candidate_facts(
         session,
         profile_id,
         requirement,
