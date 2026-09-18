@@ -184,7 +184,7 @@ def test_compound_list_keeps_partial_evidence_unknown() -> None:
 
     assert result.status == RequirementMatchStatus.UNKNOWN
     assert result.evidence
-    assert "unitários" in result.reason
+    assert "testes unitários" in result.reason
 
 
 def test_process_mapping_alias_is_partial_not_full_documentation_match() -> None:
@@ -291,7 +291,7 @@ def test_compound_revalidates_legacy_partial_match() -> None:
 
     assert result.status == RequirementMatchStatus.UNKNOWN
     assert result.evidence
-    assert "unitários" in result.reason
+    assert "testes unitários" in result.reason
 
 
 def test_stakeholder_revalidates_legacy_weak_match() -> None:
