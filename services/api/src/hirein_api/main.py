@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 from starlette.responses import JSONResponse, Response
 
+from hirein_api.blind_report import BlindReportError, build_blind_report, parse_job_ids
 from hirein_api.bootstrap_jobs import BootstrapJobsError, ingest_bootstrap_jobs
 from hirein_api.db import create_engine, create_session_factory
 from hirein_api.evals.routes import router as evals_router
@@ -32,6 +33,16 @@ session_factory = create_session_factory(engine)
 
 class HealthResponse(BaseModel):
     status: str
+
+
+async def _run_blind_holdout_report(raw_job_ids: str) -> None:
+    await asyncio.sleep(1)
+    try:
+        job_ids = parse_job_ids(raw_job_ids)
+        report = await build_blind_report(session_factory, job_ids)
+        logger.warning("HIREIN_BLIND_HOLDOUT_REPORT=%s", report)
+    except (BlindReportError, ValueError):
+        logger.exception("Operational blind holdout report failed")
 
 
 async def _run_operational_job_bootstrap(raw_json: str) -> None:
@@ -54,14 +65,21 @@ async def _run_operational_job_bootstrap(raw_json: str) -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     raw_bootstrap_jobs = os.getenv("HIREIN_BOOTSTRAP_JOBS_JSON", "").strip()
+    raw_report_job_ids = os.getenv("HIREIN_BLIND_REPORT_JOB_IDS", "").strip()
     bootstrap_task = (
         asyncio.create_task(_run_operational_job_bootstrap(raw_bootstrap_jobs))
         if raw_bootstrap_jobs
         else None
     )
+    report_task = (
+        asyncio.create_task(_run_blind_holdout_report(raw_report_job_ids))
+        if raw_report_job_ids
+        else None
+    )
     yield
-    if bootstrap_task is not None and not bootstrap_task.done():
-        bootstrap_task.cancel()
+    for task in (bootstrap_task, report_task):
+        if task is not None and not task.done():
+            task.cancel()
     await engine.dispose()
 
 
