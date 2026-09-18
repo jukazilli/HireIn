@@ -2,7 +2,13 @@
 
 ## Status
 
-Implementação iniciada após o encerramento do Blind Holdout #4.
+Implementada, testada e publicada em produção após o encerramento do Blind Holdout #4.
+
+- PR: #42
+- commit de produção: `1333863f9b262558acae512b5d32b2e2ec40643a`
+- CI: contrato OpenAPI, web, Python e E2E aprovados
+- sem migração de banco
+- sem recalibração de pesos
 
 ## Objetivo
 
@@ -130,3 +136,68 @@ sem interpretar uma restrição logística como falta de capacidade profissional
 6. contrato legado continua funcional;
 7. UI mostra as três dimensões explicitamente;
 8. sem mudança de pesos para otimizar holdouts revelados.
+
+
+## Regressão pós-Holdout #4
+
+Esta regressão foi executada **depois** da revelação das avaliações humanas e, portanto, não é uma nova validação cega.
+
+Como o v1.6 calcula Professional Fit diretamente a partir de `requirement_score` e `evaluation_coverage` já produzidos pelo matcher, os resultados profissionais do Holdout #4 ficam deterministicamente:
+
+| Oportunidade | Professional Fit | Confiança |
+| --- | ---: | ---: |
+| Gaudium — Analista de Implantação | 100% | 20% |
+| Populos — Analista de Implementação ITSM Pleno | 100% | 30% |
+| Grupo Autoglass — Analista de Projetos I - PMO | 100% | 14% |
+| Neogrid — Product Manager Specialist I | sem score | 0% |
+| NEXDOM Healthtech — Consultor de Implantação e Negócios Júnior | 100% | 15% |
+
+O blocker de localização da Populos passa corretamente para Opportunity Compatibility e deixa de transformar Professional Fit em zero.
+
+### Efeito no ranking profissional
+
+Usando o ranking de benchmark existente, que reduz scores de baixa confiança em direção ao prior neutro de 50, a ordem de regressão fica:
+
+1. Populos;
+2. Gaudium;
+3. NEXDOM;
+4. Grupo Autoglass;
+5. Neogrid.
+
+Métricas de regressão:
+
+- amostra: 5;
+- relevantes por Professional Fit humano >= 3: 3;
+- vagas com score: 4;
+- confiança média: 15,8%;
+- Recall@5: 100%;
+- NDCG@5: ~0,717.
+
+No v1.5, o NDCG@5 havia sido 1,000 porque o blocker geográfico empurrava Populos para o fim do ranking. A queda no v1.6 não significa que a separação de dimensões está errada; ela revela que o blocker de oportunidade estava mascarando uma deficiência do Professional Fit.
+
+### Diagnóstico
+
+O caso Populos expõe o principal problema restante:
+
+```text
+Professional Fit = 100%
+Confidence = 30%
+muitos requisitos obrigatórios = UNKNOWN
+```
+
+Com pouca evidência avaliada, um conjunto pequeno de requisitos favoráveis ainda pode produzir 100% de Fit. O ranking suaviza esse número pela confiança, mas 30% de cobertura ainda pode colocar a vaga acima de oportunidades profissionalmente melhores que possuem cobertura ainda menor.
+
+Isso não deve ser corrigido ajustando pesos para reproduzir o Holdout #4.
+
+## Próximo gate de engenharia
+
+Antes de usar Professional Fit como sinal forte do Search Profile v0, tratar a camada de evidência/confiança:
+
+1. aumentar recuperação auditável de evidências já existentes no Candidate Core;
+2. distinguir melhor ausência de evidência de contraprova confirmada;
+3. revisar requisitos compostos para evitar que evidência parcial valide o conjunto;
+4. investigar como representar evidência negativa/limites conhecidos sem transformar ausência em GAP;
+5. avaliar ranking quando todas as oportunidades possuem `INSUFFICIENT_DATA`;
+6. só depois rodar um novo conjunto cego para validar a evolução.
+
+O Holdout #4 permanece conjunto de desenvolvimento/regressão e não deve ser reutilizado como validação cega.
