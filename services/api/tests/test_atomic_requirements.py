@@ -69,3 +69,20 @@ def test_does_not_split_domain_or_experience_text() -> None:
         )
         is None
     )
+
+
+def test_rejects_sentence_like_coordination_that_would_lose_context() -> None:
+    assert (
+        parse_atomic_requirement(
+            "Integrações via API com provedores de jogos e serviços terceirizados",
+            RequirementKind.SKILL,
+        )
+        is None
+    )
+    assert (
+        parse_atomic_requirement(
+            "Priorização de funcionalidades por valor, urgência e impacto",
+            RequirementKind.SKILL,
+        )
+        is None
+    )
