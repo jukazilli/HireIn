@@ -295,6 +295,8 @@ async def upsert_evidence_resolution(
             "be resolved by free-text evidence"
         )
 
+    resolution = await get_resolution(session, profile_id, requirement_id)
+
     baseline = await calculate_job_match_v17(session, job_id)
     baseline_result = next(
         (
@@ -304,7 +306,7 @@ async def upsert_evidence_resolution(
         ),
         None,
     )
-    if (
+    if resolution is None and (
         baseline_result is None
         or baseline_result.status != RequirementMatchStatus.UNKNOWN
     ):
@@ -312,7 +314,6 @@ async def upsert_evidence_resolution(
             "human evidence resolution only applies to requirements still UNKNOWN in Match v1.7"
         )
 
-    resolution = await get_resolution(session, profile_id, requirement_id)
     if resolution is None:
         resolution = CandidateEvidenceResolution(
             profile_id=profile_id,
