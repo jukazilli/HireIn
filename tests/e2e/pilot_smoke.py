@@ -185,7 +185,7 @@ def save_human_review(page: Page) -> None:
     page.get_by_role("button", name="Salvar e revelar Match").click()
 
     expect(page.get_by_text(re.compile(r"^Sua avaliação foi salva\."))).to_be_visible()
-    expect(page.get_by_text("Confiança da análise", exact=True)).to_be_visible()
+    expect(page.get_by_text("Confiança da evidência", exact=True)).to_be_visible()
     expect(page.get_by_text("Obrigatórios atendidos", exact=True)).to_be_visible()
     expect(page.get_by_text("Opportunity Compatibility", exact=True)).to_be_visible()
     expect(page.get_by_text("Declarado por você; não é inferido pelo Match.", exact=True)).to_be_visible()
