@@ -139,9 +139,22 @@ def _literal_evidence(
             if _either_contains(skill.name, term):
                 matches.append(_evidence("SKILL", skill.id, skill.name, skill.source_type))
 
-    if kind in {RequirementKind.TOOL, RequirementKind.DOMAIN, RequirementKind.RESPONSIBILITY}:
+    if kind in {
+        RequirementKind.SKILL,
+        RequirementKind.TOOL,
+        RequirementKind.DOMAIN,
+        RequirementKind.RESPONSIBILITY,
+    }:
         for fact in index.facts:
             fact_kind = FactKind(fact.kind)
+            if kind == RequirementKind.SKILL:
+                is_semantic_resolver_fact = (
+                    fact_kind == FactKind.OTHER
+                    and fact.source_ref is not None
+                    and fact.source_ref.startswith("evidence-gap:")
+                )
+                if not is_semantic_resolver_fact:
+                    continue
             if kind == RequirementKind.TOOL and fact_kind != FactKind.TOOL:
                 continue
             if kind == RequirementKind.DOMAIN and fact_kind not in {
