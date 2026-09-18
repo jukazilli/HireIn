@@ -116,6 +116,7 @@ async def list_evidence_gaps(
     profile = await get_primary_profile(session)
     if profile is None:
         raise EvidenceProfileNotFoundError("primary candidate profile not found")
+    profile_id = profile.id
 
     job = await get_job(session, job_id)
     if job is None:
@@ -132,7 +133,7 @@ async def list_evidence_gaps(
     requirements = {item.id: item for item in job.requirements}
     resolution_rows = await list_resolutions_for_requirements(
         session,
-        profile.id,
+        profile_id,
         list(requirements),
     )
     resolutions = {
@@ -264,6 +265,7 @@ async def upsert_evidence_resolution(
     profile = await get_primary_profile(session)
     if profile is None:
         raise EvidenceProfileNotFoundError("primary candidate profile not found")
+    profile_id = profile.id
 
     job = await get_job(session, job_id)
     if job is None:
@@ -300,10 +302,10 @@ async def upsert_evidence_resolution(
             "human evidence resolution only applies to requirements still UNKNOWN in Match v1.7"
         )
 
-    resolution = await get_resolution(session, profile.id, requirement_id)
+    resolution = await get_resolution(session, profile_id, requirement_id)
     if resolution is None:
         resolution = CandidateEvidenceResolution(
-            profile_id=profile.id,
+            profile_id=profile_id,
             job_requirement_id=requirement_id,
             decision=payload.decision.value,
         )
@@ -320,7 +322,7 @@ async def upsert_evidence_resolution(
 
     await _sync_candidate_fact(
         session,
-        profile.id,
+        profile_id,
         requirement,
         resolution,
     )
@@ -329,7 +331,7 @@ async def upsert_evidence_resolution(
     await session.commit()
     session.expire_all()
 
-    stored = await get_resolution(session, profile.id, requirement_id)
+    stored = await get_resolution(session, profile_id, requirement_id)
     if stored is None:
         raise RuntimeError("evidence resolution disappeared after commit")
     return _resolution_response(stored)
