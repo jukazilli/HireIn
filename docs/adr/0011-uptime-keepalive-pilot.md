@@ -67,9 +67,9 @@ Desvantagens:
 
 ## Decisão
 
-1. `/health/live` é a rota oficial de liveness e monitoramento externo do HireIn.
+1. `/health/live` é a rota oficial de liveness e monitoramento externo do HireIn e aceita `GET` e `HEAD`, permitindo compatibilidade com monitores HTTP que usam `HEAD` por padrão.
 2. A rota deve permanecer independente de PostgreSQL, Match, perfil, vagas e outras dependências.
-3. A resposta deve usar `Cache-Control: no-store, max-age=0`.
+3. Respostas de liveness devem usar `Cache-Control: no-store, max-age=0`; `GET` retorna o JSON de status e `HEAD` retorna 200 sem corpo.
 4. `/health/ready` continua reservado para readiness, incluindo verificação de banco.
 5. O frontend mantém retry controlado para leituras; monitor externo não substitui resiliência do cliente.
 6. UptimeRobot Free é a primeira opção operacional para o piloto, com checks HTTP a cada 5 minutos.
