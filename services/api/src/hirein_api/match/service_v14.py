@@ -6,6 +6,7 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from hirein_api.atomic_requirements import parse_atomic_requirement
 from hirein_api.jobs.domain import RequirementImportance, RequirementKind
 from hirein_api.jobs.models import JobRequirement
 from hirein_api.jobs.repository import get_job
