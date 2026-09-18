@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirein_api.evidence.domain import EVIDENCE_GAP_SOURCE_PREFIX, EvidenceDecision
