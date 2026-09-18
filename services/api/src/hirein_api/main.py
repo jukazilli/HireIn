@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+import os
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
@@ -11,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 from starlette.responses import JSONResponse, Response
 
+from hirein_api.bootstrap_jobs import BootstrapJobsError, ingest_bootstrap_jobs
 from hirein_api.db import create_engine, create_session_factory
 from hirein_api.evals.routes import router as evals_router
 from hirein_api.evidence.routes import router as evidence_router
@@ -18,6 +22,8 @@ from hirein_api.jobs.routes import router as jobs_router
 from hirein_api.profile.routes import router as profile_router
 from hirein_api.security import valid_backend_token, valid_ingestion_token
 from hirein_api.settings import load_settings
+
+logger = logging.getLogger(__name__)
 
 settings = load_settings()
 engine = create_engine(settings)
@@ -28,9 +34,34 @@ class HealthResponse(BaseModel):
     status: str
 
 
+async def _run_operational_job_bootstrap(raw_json: str) -> None:
+    # Uvicorn starts accepting traffic immediately after lifespan startup
+    # completes. Delay the loopback POST so the batch crosses the same public
+    # API contract used by external ingestion clients.
+    await asyncio.sleep(1)
+    try:
+        port = int(os.getenv("PORT", "8000"))
+        await asyncio.to_thread(
+            ingest_bootstrap_jobs,
+            raw_json,
+            port=port,
+            backend_token=settings.pilot_backend_token,
+        )
+    except (BootstrapJobsError, ValueError):
+        logger.exception("Operational job bootstrap failed")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    raw_bootstrap_jobs = os.getenv("HIREIN_BOOTSTRAP_JOBS_JSON", "").strip()
+    bootstrap_task = (
+        asyncio.create_task(_run_operational_job_bootstrap(raw_bootstrap_jobs))
+        if raw_bootstrap_jobs
+        else None
+    )
     yield
+    if bootstrap_task is not None and not bootstrap_task.done():
+        bootstrap_task.cancel()
     await engine.dispose()
 
 
