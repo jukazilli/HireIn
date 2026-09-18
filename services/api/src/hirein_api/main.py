@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 from starlette.responses import JSONResponse, Response
 
-from hirein_api.blind_report import BlindReportError, build_blind_report, parse_job_ids
+from hirein_api.blind_report import build_blind_report, parse_job_ids
 from hirein_api.bootstrap_jobs import BootstrapJobsError, ingest_bootstrap_jobs
 from hirein_api.db import create_engine, create_session_factory
 from hirein_api.evals.routes import router as evals_router
