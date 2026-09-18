@@ -337,9 +337,15 @@ def test_confirmed_resolution_is_reused_by_future_job_without_asking_again() -> 
         )
         assert response.status_code == 200
 
+        second_payload = _job_payload([learned_requirement])
+        second_payload["company_name"] = "Empresa C"
+        second_payload["title"] = "Analista de Operações"
+        second_payload["description_raw"] = (
+            "Segunda vaga usada para validar reaproveitamento semântico."
+        )
         second_job = client.post(
             "/api/v1/jobs",
-            json=_job_payload([learned_requirement]),
+            json=second_payload,
         )
         assert second_job.status_code == 201
         second_job_id = second_job.json()["id"]
