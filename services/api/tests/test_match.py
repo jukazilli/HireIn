@@ -165,6 +165,10 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "professional_fit_separated_from_opportunity_compatibility",
         "legacy_score_aliases_professional_fit_v16",
         "apply_intent_is_user_owned_not_inferred_by_match",
+        "evidence_recovery_v17_enabled",
+        "partial_compound_evidence_preserved",
+        "generic_engineering_degree_family_enabled",
+        "stakeholder_interface_evidence_enabled",
     ]
 
 
