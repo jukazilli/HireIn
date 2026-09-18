@@ -10,8 +10,8 @@
   let error = '';
 
   const bandLabel: Record<string, string> = {
-    STRONG: 'Compatibilidade forte', GOOD: 'Boa compatibilidade',
-    PARTIAL: 'Compatibilidade parcial', LOW: 'Compatibilidade baixa',
+    STRONG: 'Aderência profissional forte', GOOD: 'Boa aderência profissional',
+    PARTIAL: 'Aderência profissional parcial', LOW: 'Aderência profissional baixa',
     INSUFFICIENT_DATA: 'Dados insuficientes'
   };
 
@@ -56,12 +56,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. A aderência vem acompanhada da confiança da análise.
+        avaliar com segurança. No v1.6, aderência profissional e compatibilidade da oportunidade são dimensões separadas.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.5 determinístico.</strong>
-      Aderência e confiança são dimensões diferentes. Sem LLM e sem embeddings no cálculo do score.
+      <strong>Match v1.6 determinístico.</strong>
+      Professional Fit mede capacidade; Opportunity Compatibility mede condições da vaga. Apply Intent continua sendo sua decisão.
     </aside>
   </section>
 
@@ -105,26 +105,49 @@
       <div class="match-overview">
         <div class="match-score-panel">
           <div>
-            <p class="eyebrow">Aderência profissional</p>
-            <span class="match-score-value">{result.score === null ? '—' : `${result.score}%`}</span>
-            <p class="match-score-label">{bandLabel[result.band] ?? result.band}</p>
+            <p class="eyebrow">Professional Fit</p>
+            <span class="match-score-value">{(result.professional_fit?.score ?? result.score) === null ? '—' : `${result.professional_fit?.score ?? result.score}%`}</span>
+            <p class="match-score-label">{bandLabel[result.professional_fit?.band ?? result.band] ?? (result.professional_fit?.band ?? result.band)}</p>
           </div>
-          <small>{result.score === null ? 'Sem evidência suficiente para aderência' : 'Aderência entre evidências avaliadas'}</small>
+          <small>{(result.professional_fit?.score ?? result.score) === null ? 'Sem evidência suficiente para aderência' : 'Competência profissional entre evidências avaliadas'}</small>
         </div>
         <div class="match-summary-panel">
           <p class="section-kicker">{selectedJob.company_name}</p>
           <h2 class="selected-title">{selectedJob.title}</h2>
           <p class="selected-meta">{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
 
+          <div class="dimension-strip">
+            <div class="dimension-read">
+              <span>Professional Fit</span>
+              <strong>{(result.professional_fit?.score ?? result.score) === null ? '—' : `${result.professional_fit?.score ?? result.score}%`}</strong>
+              <small>confiança {result.professional_fit?.confidence ?? result.evaluation_coverage}%</small>
+            </div>
+            <div class="dimension-read" class:blocked={result.opportunity_compatibility?.blocked}>
+              <span>Opportunity Compatibility</span>
+              <strong>{result.opportunity_compatibility?.score === null || result.opportunity_compatibility?.score === undefined ? '—' : `${result.opportunity_compatibility.score}%`}</strong>
+              <small>{result.opportunity_compatibility?.blocked ? 'blocker objetivo' : `cobertura ${result.opportunity_compatibility?.coverage ?? 0}%`}</small>
+            </div>
+            <div class="dimension-read">
+              <span>Apply Intent</span>
+              <strong>Humano</strong>
+              <small>declarado por você na revisão</small>
+            </div>
+          </div>
+
           <div class="match-facts">
-            <div class="match-fact"><span>Confiança da análise</span><strong>{result.evaluation_coverage}%</strong></div>
+            <div class="match-fact"><span>Confiança da evidência</span><strong>{result.professional_fit?.confidence ?? result.evaluation_coverage}%</strong></div>
             <div class="match-fact"><span>Requisitos atendidos</span><strong>{result.matched_required} obrigatórios</strong></div>
             <div class="match-fact"><span>Gaps obrigatórios</span><strong>{result.missing_required}</strong></div>
             <div class="match-fact"><span>Itens não avaliáveis</span><strong>{result.unknown_requirements}</strong></div>
-            <div class="match-fact"><span>Preferências</span><strong>{result.preference_score === null ? '—' : `${result.preference_score}%`}</strong></div>
           </div>
 
-          {#if result.band === 'INSUFFICIENT_DATA'}
+          {#if result.opportunity_compatibility?.blocked}
+            <div class="status-notice warning opportunity-note">
+              Esta oportunidade possui blocker objetivo ({result.opportunity_compatibility.blockers.join(', ')}), mas isso não reduz seu Professional Fit.
+            </div>
+          {/if}
+
+          {#if (result.professional_fit?.band ?? result.band) === 'INSUFFICIENT_DATA'}
             <div class="status-notice warning insufficient-note">
               A confiança está abaixo de 60%. A aderência exibida considera apenas as evidências que puderam ser avaliadas; os itens desconhecidos continuam explícitos e não viram gaps artificiais.
             </div>
@@ -172,9 +195,9 @@
         <aside class="surface surface-padded preferences-panel">
           <div class="section-head">
             <div class="section-head-copy">
-              <p class="section-kicker">Preferências</p>
-              <h2 class="section-title">O que combina com seu momento</h2>
-              <p class="section-description">Preferências ajudam na leitura, mas não substituem o fit profissional. Presença obrigatória fora das localidades aceitas pode ser um blocker explícito.</p>
+              <p class="section-kicker">Opportunity Compatibility</p>
+              <h2 class="section-title">A oportunidade funciona para você?</h2>
+              <p class="section-description">Localização, modalidade, contrato, salário e demais preferências são avaliados aqui sem alterar sua capacidade profissional.</p>
             </div>
           </div>
           <div class="preference-list">
@@ -192,7 +215,7 @@
 
           <div class="interpretation">
             <strong>Como ler este resultado</strong>
-            <p>Aderência profissional não é probabilidade de entrevista, contratação nem intenção de candidatura. O Match organiza evidências; a decisão sobre a vaga continua sendo sua.</p>
+            <p>Professional Fit não é probabilidade de entrevista ou contratação. Opportunity Compatibility não decide sua candidatura. Apply Intent pertence a você; o HireIn organiza os sinais sem misturá-los.</p>
             {#if result.warnings.length > 0}
               <div class="warning-list">
                 {#each result.warnings as warning}<span>{warning}</span>{/each}
@@ -213,7 +236,13 @@
   .selected-title { margin: .18rem 0 .35rem; font-size: clamp(1.6rem, 3vw, 2.3rem); }
   .selected-meta { margin: 0; color: var(--text-muted); font-size: .84rem; }
   .match-score-panel small { color: var(--brand-200); font-size: .74rem; }
-  .insufficient-note { margin-top: 1rem; }
+  .dimension-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: .55rem; margin-top: 1.2rem; }
+  .dimension-read { display: grid; gap: .18rem; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); }
+  .dimension-read > span { color: var(--text-muted); font-size: .66rem; }
+  .dimension-read > strong { font-family: var(--font-display); font-size: 1.1rem; color: var(--brand-700); }
+  .dimension-read > small { color: var(--text-muted); font-size: .66rem; }
+  .dimension-read.blocked { border-color: var(--danger); background: var(--danger-soft); }
+  .insufficient-note, .opportunity-note { margin-top: 1rem; }
   .result-columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr); gap: 1rem; align-items: start; }
   .requirement-meta { color: var(--text-muted); font-size: .7rem; white-space: nowrap; }
   .proof-list { display: grid; gap: .55rem; }
@@ -232,6 +261,7 @@
   @media (max-width: 900px) {
     .job-picker { grid-template-columns: 1fr; }
     .result-columns { grid-template-columns: 1fr; }
+    .dimension-strip { grid-template-columns: 1fr; }
     .preferences-panel { position: static; }
   }
   @media (max-width: 640px) {
