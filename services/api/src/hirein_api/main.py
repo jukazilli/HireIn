@@ -36,7 +36,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="HireIn API",
-    version="0.5.0",
+    version="0.6.0",
     description="Core API for the HireIn single-user pilot.",
     lifespan=lifespan,
 )
