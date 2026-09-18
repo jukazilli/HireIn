@@ -45,7 +45,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=list(settings.cors_origins),
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=[
         "Content-Type",
         "Authorization",
@@ -91,6 +91,15 @@ async def liveness(response: Response) -> HealthResponse:
     # External uptime probes may call this endpoint frequently.
     response.headers["Cache-Control"] = "no-store, max-age=0"
     return HealthResponse(status="ok")
+
+
+@app.head("/health/live", include_in_schema=False)
+async def liveness_head() -> Response:
+    # HTTP uptime monitors commonly probe with HEAD by default.
+    return Response(
+        status_code=status.HTTP_200_OK,
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 @app.get("/health/ready", response_model=HealthResponse, tags=["health"])

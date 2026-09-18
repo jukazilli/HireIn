@@ -26,7 +26,7 @@ O frontend já possui retry controlado para operações de leitura quando a API 
 
 ## 2. Contrato oficial de health
 
-### `GET /health/live`
+### `GET /health/live` e `HEAD /health/live`
 
 Uso:
 
@@ -37,9 +37,8 @@ Uso:
 
 Contrato:
 
-```json
-{"status":"ok"}
-```
+- `GET` retorna `{"status":"ok"}`;
+- `HEAD` retorna HTTP 200 sem corpo, preservando os mesmos headers de cache.
 
 Requisitos arquiteturais:
 
@@ -97,7 +96,7 @@ Esse é o fallback permanente.
 ```text
 Uptime monitor externo
         │
-        │ GET periódico
+        │ HEAD/GET periódico
         ▼
 /health/live
         │
@@ -111,7 +110,7 @@ Configuração recomendada enquanto a API estiver no Render Free:
 Provider recomendado: UptimeRobot Free
 Monitor type: HTTP(s)
 URL: https://hirein-api.onrender.com/health/live
-Método: GET
+Método: HEAD (padrão do monitor HTTP; GET também é aceito)
 Intervalo: 5 minutos
 HTTP esperado: 200
 Nome sugerido: HireIn API — Liveness
@@ -240,7 +239,7 @@ Revalidar antes de decisões futuras, porque limites e preços mudam:
 
 ## 10. Decisão operacional atual
 
-- `/health/live` é a rota oficial de liveness e monitoramento externo do HireIn;
+- `/health/live` é a rota oficial de liveness e monitoramento externo do HireIn, aceitando `GET` e `HEAD`;
 - `/health/ready` permanece para prontidão e diagnóstico do banco;
 - retry de cold start permanece ativo no frontend;
 - UptimeRobot Free é o provedor preferencial inicial para o piloto;
