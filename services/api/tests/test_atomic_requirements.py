@@ -71,6 +71,15 @@ def test_does_not_split_domain_or_experience_text() -> None:
     )
 
 
+
+def test_restores_local_prefix_inside_mixed_compound_list() -> None:
+    assert _options("Treinamentos, testes funcionais, unitários e integrados") == (
+        "Treinamentos",
+        "testes funcionais",
+        "testes unitários",
+        "testes integrados",
+    )
+
 def test_rejects_sentence_like_coordination_that_would_lose_context() -> None:
     assert (
         parse_atomic_requirement(
