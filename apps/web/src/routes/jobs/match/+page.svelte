@@ -12,6 +12,8 @@
   let evidenceError = '';
   let evidenceMessage = '';
   let evidenceSavingId = '';
+  let atomicEditingId = '';
+  let atomicDrafts: Record<string, string[]> = {};
 
   const bandLabel: Record<string, string> = {
     STRONG: 'Aderência profissional forte', GOOD: 'Boa aderência profissional',
@@ -26,6 +28,7 @@
 
   const resolutionLabel: Record<EvidenceDecision, string> = {
     CONFIRMED: 'Confirmado por você',
+    PARTIAL: 'Você possui parte dos itens',
     NOT_HAVE: 'Você indicou que não possui',
     UNSURE: 'Ainda não confirmado'
   };
@@ -56,6 +59,8 @@
     error = '';
     evidenceError = '';
     evidenceMessage = '';
+    atomicEditingId = '';
+    atomicDrafts = {};
     calculating = true;
     try {
       result = await api.getJobMatch(job.id);
@@ -69,28 +74,56 @@
     }
   }
 
-  async function resolveGap(gap: EvidenceGapItem, decision: EvidenceDecision) {
+  function beginAtomicSelection(gap: EvidenceGapItem) {
+    atomicEditingId = gap.requirement_id;
+    atomicDrafts = {
+      ...atomicDrafts,
+      [gap.requirement_id]: [...(gap.resolution?.confirmed_atoms ?? [])]
+    };
+    evidenceError = '';
+    evidenceMessage = '';
+  }
+
+  function toggleAtomicOption(gap: EvidenceGapItem, option: string) {
+    const current = atomicDrafts[gap.requirement_id] ?? [];
+    atomicDrafts = {
+      ...atomicDrafts,
+      [gap.requirement_id]: current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option]
+    };
+  }
+
+  async function resolveGap(
+    gap: EvidenceGapItem,
+    decision: EvidenceDecision,
+    confirmedAtoms: string[] = []
+  ) {
     if (!selectedJob) return;
 
     evidenceSavingId = gap.requirement_id;
     evidenceError = '';
     evidenceMessage = '';
     try {
-      await api.upsertEvidenceResolution(selectedJob.id, gap.requirement_id, {
+      const saved = await api.upsertEvidenceResolution(selectedJob.id, gap.requirement_id, {
         decision,
-        evidence_text: null
+        evidence_text: null,
+        confirmed_atoms: confirmedAtoms
       });
 
       [result, evidenceGaps] = await Promise.all([
         api.getJobMatch(selectedJob.id),
         api.getEvidenceGaps(selectedJob.id)
       ]);
+      atomicEditingId = '';
       evidenceMessage =
-        decision === 'CONFIRMED'
-          ? 'Experiência confirmada. O HireIn aprendeu este conceito e recalculou o Professional Fit.'
-          : decision === 'NOT_HAVE'
-            ? 'Gap confirmado por você. O Professional Fit foi recalculado.'
-            : 'Item mantido como desconhecido.';
+        saved.decision === 'CONFIRMED'
+          ? 'Experiência confirmada. O HireIn aprendeu os conceitos selecionados e recalculou o Professional Fit.'
+          : saved.decision === 'PARTIAL'
+            ? 'Conhecimento parcial salvo. Os itens confirmados foram aprendidos, mas o requisito completo continua como gap.'
+            : saved.decision === 'NOT_HAVE'
+              ? 'Gap confirmado por você. O Professional Fit foi recalculado.'
+              : 'Item mantido como desconhecido.';
     } catch (reason) {
       evidenceError = reason instanceof Error ? reason.message : 'Não foi possível salvar sua resposta.';
     } finally {
@@ -113,12 +146,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. No v1.9, UNKNOWNs elegíveis podem ser confirmados por você sem texto livre; o HireIn persiste o conceito da vaga como evidência estruturada para análises futuras.
+        avaliar com segurança. No v1.10, requisitos compostos são quebrados em conceitos atômicos antes de entrarem no Candidate Core, evitando aprender alternativas que você nunca confirmou.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.9 com aprendizado estruturado.</strong>
-      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. O resolver humano atua somente no que continua UNKNOWN e transforma a resposta em conhecimento reutilizável do perfil.
+      <strong>Match v1.10 com evidência atômica.</strong>
+      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. Em requisitos compostos, você escolhe exatamente quais itens possui antes de o HireIn aprender algo novo.
     </aside>
   </section>
 
@@ -219,7 +252,7 @@
               <p class="section-kicker">Evidence Gap Resolver</p>
               <h2 class="section-title">O que ainda vale a pena confirmar?</h2>
               <p class="section-description">
-                O HireIn pergunta apenas sobre itens que o v1.7 não conseguiu comprovar nem negar. Você só responde Tenho, Não tenho ou Não sei; o conceito confirmado é normalizado a partir do próprio requisito da vaga.
+                O HireIn pergunta apenas sobre itens que o v1.7 não conseguiu comprovar nem negar. Requisitos simples continuam com Tenho, Não tenho ou Não sei; listas como “Bizagi, Visio ou Miro” pedem quais itens você realmente possui.
               </p>
             </div>
             <div class="resolver-confidence">
@@ -257,30 +290,73 @@
                   {#if gap.resolution}
                     <div class="resolution-state" data-decision={gap.resolution.decision}>
                       <strong>{resolutionLabel[gap.resolution.decision]}</strong>
-                      {#if gap.resolution.decision === 'CONFIRMED'}<span>Conhecimento incorporado ao perfil para futuras análises.</span>{/if}
+                      {#if gap.resolution.confirmed_atoms.length > 0}
+                        <div class="confirmed-atom-list">
+                          {#each gap.resolution.confirmed_atoms as atom}<span>{atom}</span>{/each}
+                        </div>
+                      {:else if gap.resolution.decision === 'CONFIRMED'}
+                        <span>Conhecimento incorporado ao perfil para futuras análises.</span>
+                      {/if}
                     </div>
                   {/if}
 
-                  <div class="resolver-actions">
-                    <button
-                      class="btn btn-primary"
-                      type="button"
-                      disabled={evidenceSavingId === gap.requirement_id}
-                      onclick={() => resolveGap(gap, 'CONFIRMED')}
-                    >Tenho</button>
-                    <button
-                      class="btn btn-secondary"
-                      type="button"
-                      disabled={evidenceSavingId === gap.requirement_id}
-                      onclick={() => resolveGap(gap, 'NOT_HAVE')}
-                    >Não tenho</button>
-                    <button
-                      class="btn btn-ghost"
-                      type="button"
-                      disabled={evidenceSavingId === gap.requirement_id}
-                      onclick={() => resolveGap(gap, 'UNSURE')}
-                    >Não sei</button>
-                  </div>
+                  {#if gap.atomic_options.length > 0 && atomicEditingId === gap.requirement_id}
+                    <div class="atomic-editor">
+                      <div class="atomic-guidance">
+                        <strong>Selecione exatamente o que você possui</strong>
+                        <span>
+                          {gap.atomic_operator === 'ANY'
+                            ? 'Um ou mais itens podem atender este requisito. Marque tudo que se aplica a você.'
+                            : 'O requisito completo pede todos os itens. Selecione tudo que você realmente possui.'}
+                        </span>
+                      </div>
+                      <div class="atomic-options" role="group" aria-label="Itens confirmados">
+                        {#each gap.atomic_options as option}
+                          <button
+                            type="button"
+                            class:active={(atomicDrafts[gap.requirement_id] ?? []).includes(option)}
+                            aria-pressed={(atomicDrafts[gap.requirement_id] ?? []).includes(option)}
+                            onclick={() => toggleAtomicOption(gap, option)}
+                          >{option}</button>
+                        {/each}
+                      </div>
+                      <div class="resolver-actions">
+                        <button
+                          class="btn btn-primary"
+                          type="button"
+                          disabled={evidenceSavingId === gap.requirement_id || (atomicDrafts[gap.requirement_id] ?? []).length === 0}
+                          onclick={() => resolveGap(gap, 'CONFIRMED', atomicDrafts[gap.requirement_id] ?? [])}
+                        >Confirmar seleção</button>
+                        <button
+                          class="btn btn-ghost"
+                          type="button"
+                          disabled={evidenceSavingId === gap.requirement_id}
+                          onclick={() => (atomicEditingId = '')}
+                        >Cancelar</button>
+                      </div>
+                    </div>
+                  {:else}
+                    <div class="resolver-actions">
+                      <button
+                        class="btn btn-primary"
+                        type="button"
+                        disabled={evidenceSavingId === gap.requirement_id}
+                        onclick={() => gap.atomic_options.length > 0 ? beginAtomicSelection(gap) : resolveGap(gap, 'CONFIRMED')}
+                      >Tenho</button>
+                      <button
+                        class="btn btn-secondary"
+                        type="button"
+                        disabled={evidenceSavingId === gap.requirement_id}
+                        onclick={() => resolveGap(gap, 'NOT_HAVE')}
+                      >Não tenho</button>
+                      <button
+                        class="btn btn-ghost"
+                        type="button"
+                        disabled={evidenceSavingId === gap.requirement_id}
+                        onclick={() => resolveGap(gap, 'UNSURE')}
+                      >Não sei</button>
+                    </div>
+                  {/if}
                 </article>
               {/each}
             </div>
@@ -388,6 +464,17 @@
   .resolution-state span { color: var(--text-muted); font-size: .72rem; line-height: 1.45; }
   .resolution-state[data-decision='CONFIRMED'] { background: var(--success-soft); border-color: var(--success); }
   .resolution-state[data-decision='NOT_HAVE'] { background: var(--danger-soft); border-color: var(--danger); }
+  .resolution-state[data-decision='PARTIAL'] { background: var(--warning-soft); border-color: var(--warning); }
+  .confirmed-atom-list { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .confirmed-atom-list span { padding: .24rem .42rem; border-radius: 999px; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-size: .68rem; }
+  .atomic-editor { display: grid; gap: .7rem; padding: .8rem; border: 1px solid var(--brand-100); border-radius: var(--radius-sm); background: white; }
+  .atomic-guidance { display: grid; gap: .2rem; }
+  .atomic-guidance strong { font-size: .78rem; }
+  .atomic-guidance span { color: var(--text-muted); font-size: .72rem; line-height: 1.45; }
+  .atomic-options { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .atomic-options button { padding: .45rem .65rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-subtle); color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .74rem; }
+  .atomic-options button:hover { border-color: var(--brand-200); }
+  .atomic-options button.active { border-color: var(--brand-400); background: var(--brand-50); color: var(--brand-800); font-weight: 700; }
   .resolver-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
   .resolver-profile-note { margin-top: .25rem; }
   .resolver-profile-note a { margin-left: .3rem; font-weight: 700; }

@@ -171,6 +171,7 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "stakeholder_interface_evidence_enabled",
         "human_evidence_resolution_v18_enabled",
         "human_resolution_only_applies_to_v17_unknowns",
+        "atomic_evidence_resolution_v110_enabled",
     ]
 
 

@@ -499,9 +499,13 @@ export interface components {
          * EvidenceDecision
          * @enum {string}
          */
-        EvidenceDecision: "CONFIRMED" | "NOT_HAVE" | "UNSURE";
+        EvidenceDecision: "CONFIRMED" | "PARTIAL" | "NOT_HAVE" | "UNSURE";
         /** EvidenceGapItemResponse */
         EvidenceGapItemResponse: {
+            /** Atomic Operator */
+            atomic_operator?: ("ANY" | "ALL") | null;
+            /** Atomic Options */
+            atomic_options?: string[];
             /** Coverage Impact */
             coverage_impact: number;
             importance: components["schemas"]["RequirementImportance"];
@@ -542,6 +546,8 @@ export interface components {
         };
         /** EvidenceResolutionResponse */
         EvidenceResolutionResponse: {
+            /** Confirmed Atoms */
+            confirmed_atoms?: string[];
             /**
              * Created At
              * Format: date-time
@@ -568,6 +574,8 @@ export interface components {
         };
         /** EvidenceResolutionUpsert */
         EvidenceResolutionUpsert: {
+            /** Confirmed Atoms */
+            confirmed_atoms?: string[];
             decision: components["schemas"]["EvidenceDecision"];
             /** Evidence Text */
             evidence_text?: string | null;

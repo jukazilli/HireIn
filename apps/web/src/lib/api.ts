@@ -29,13 +29,14 @@ export type RequirementKind = Schemas['RequirementKind'];
 export type RequirementImportance = Schemas['RequirementImportance'];
 export type FactKind = Schemas['FactKind'];
 
-export type EvidenceDecision = 'CONFIRMED' | 'NOT_HAVE' | 'UNSURE';
+export type EvidenceDecision = 'CONFIRMED' | 'PARTIAL' | 'NOT_HAVE' | 'UNSURE';
 
 export type EvidenceResolution = {
   id: string;
   requirement_id: string;
   decision: EvidenceDecision;
   evidence_text: string | null;
+  confirmed_atoms: string[];
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +49,8 @@ export type EvidenceGapItem = {
   weight: number;
   coverage_impact: number;
   question: string;
+  atomic_operator: 'ANY' | 'ALL' | null;
+  atomic_options: string[];
   partial_evidence: JobMatch['requirement_results'][number]['evidence'];
   resolution: EvidenceResolution | null;
 };
@@ -65,6 +68,7 @@ export type EvidenceGapList = {
 export type EvidenceResolutionUpsert = {
   decision: EvidenceDecision;
   evidence_text?: string | null;
+  confirmed_atoms?: string[];
 };
 
 export class ApiError extends Error {

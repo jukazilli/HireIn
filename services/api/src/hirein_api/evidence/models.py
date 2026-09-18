@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hirein_api.db import Base
@@ -19,7 +19,7 @@ class CandidateEvidenceResolution(Base):
             name="uq_candidate_evidence_resolution_requirement",
         ),
         CheckConstraint(
-            "decision IN ('CONFIRMED', 'NOT_HAVE', 'UNSURE')",
+            "decision IN ('CONFIRMED', 'PARTIAL', 'NOT_HAVE', 'UNSURE')",
             name="ck_candidate_evidence_resolution_decision",
         ),
     )
@@ -43,6 +43,7 @@ class CandidateEvidenceResolution(Base):
     )
     decision: Mapped[str] = mapped_column(String(32), nullable=False)
     evidence_text: Mapped[str | None] = mapped_column(Text)
+    confirmed_atoms: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
