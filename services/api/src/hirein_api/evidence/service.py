@@ -279,10 +279,8 @@ async def upsert_evidence_resolution(
         )
     if not is_human_resolvable(requirement):
         raise EvidenceResolutionConflictError(
-            (
-                "this requirement needs structured profile data and cannot "
-                "be resolved by free-text evidence"
-            )
+            "this requirement needs structured profile data and cannot "
+            "be resolved by free-text evidence"
         )
 
     baseline = await calculate_job_match_v17(session, job_id)
