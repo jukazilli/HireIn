@@ -20,14 +20,14 @@ class EvidenceResolutionUpsert(BaseModel):
 
     @model_validator(mode="after")
     def validate_confirmation_evidence(self) -> Self:
-        if self.decision == EvidenceDecision.CONFIRMED:
-            if self.evidence_text is None or len(self.evidence_text.strip()) < 12:
-                raise ValueError(
-                    (
-                        "confirmed evidence requires a concrete description "
-                        "with at least 12 characters"
-                    )
-                )
+        if (
+            self.decision == EvidenceDecision.CONFIRMED
+            and (self.evidence_text is None or len(self.evidence_text.strip()) < 12)
+        ):
+            raise ValueError(
+                "confirmed evidence requires a concrete description "
+                "with at least 12 characters"
+            )
         return self
 
 
