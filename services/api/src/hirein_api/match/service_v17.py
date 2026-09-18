@@ -87,11 +87,15 @@ def _generic_engineering_option(requirement: JobRequirement) -> bool:
     if RequirementKind(requirement.kind) != RequirementKind.EDUCATION:
         return False
 
-    value = _canonical(requirement.value)
-    normalized = re.sub(r"\s*[,;|]\s*", " ou ", value)
+    with_explicit_separators = re.sub(
+        r"\s*[,;|]\s*",
+        " ou ",
+        requirement.value,
+    )
+    value = _canonical(with_explicit_separators)
     options = [
         item.strip()
-        for item in re.split(r"\s+ou\s+", normalized)
+        for item in re.split(r"\s+ou\s+", value)
         if item.strip()
     ]
     return "engenharia" in options
