@@ -293,3 +293,21 @@ Isso é uma hipótese diferente da qualidade do Match.
 - alteração automática de pesos por cliques;
 - inferência automática de Apply Intent;
 - candidatura automática baseada apenas no ranking.
+
+
+## 12. Evidence Gap Resolver
+
+A partir do Match v1.8, baixa confiança não deve ser tratada primariamente com novos pesos ou inferências mais amplas.
+
+O fluxo recomendado é:
+
+```text
+vaga
+  -> Match determinístico
+  -> UNKNOWNs relevantes
+  -> confirmação humana auditável
+  -> Candidate Core
+  -> Match recalculado
+```
+
+O resolver só atua em requisitos que o Match v1.7 ainda considera UNKNOWN. Dados estruturados como idioma, formação, certificação, nível e tempo de experiência continuam sendo atualizados na fonte de verdade do perfil.

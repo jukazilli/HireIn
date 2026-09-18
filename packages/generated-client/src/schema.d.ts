@@ -91,6 +91,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/evidence-gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Evidence Gaps */
+        get: operations["read_evidence_gaps_api_v1_jobs__job_id__evidence_gaps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Write Evidence Resolution */
+        put: operations["write_evidence_resolution_api_v1_jobs__job_id__evidence_gaps__requirement_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{job_id}/match": {
         parameters: {
             query?: never;
@@ -461,6 +495,83 @@ export interface components {
          * @enum {string}
          */
         EvaluationErrorCategory: "MISSING_PROFILE_EVIDENCE" | "BAD_JOB_NORMALIZATION" | "SIMPLE_ALIAS" | "SEMANTIC_EQUIVALENCE" | "PREFERENCE_RULE" | "COVERAGE_FAILURE" | "RANKING_WEIGHT" | "OTHER";
+        /**
+         * EvidenceDecision
+         * @enum {string}
+         */
+        EvidenceDecision: "CONFIRMED" | "NOT_HAVE" | "UNSURE";
+        /** EvidenceGapItemResponse */
+        EvidenceGapItemResponse: {
+            /** Coverage Impact */
+            coverage_impact: number;
+            importance: components["schemas"]["RequirementImportance"];
+            kind: components["schemas"]["RequirementKind"];
+            /** Partial Evidence */
+            partial_evidence?: components["schemas"]["MatchEvidenceResponse"][];
+            /** Question */
+            question: string;
+            /**
+             * Requirement Id
+             * Format: uuid
+             */
+            requirement_id: string;
+            resolution?: components["schemas"]["EvidenceResolutionResponse"] | null;
+            /** Value */
+            value: string;
+            /** Weight */
+            weight: number;
+        };
+        /** EvidenceGapListResponse */
+        EvidenceGapListResponse: {
+            /** Baseline Unknown Count */
+            baseline_unknown_count: number;
+            current_band: components["schemas"]["MatchBand"];
+            /** Current Confidence */
+            current_confidence: number;
+            /** Gaps */
+            gaps: components["schemas"]["EvidenceGapItemResponse"][];
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Profile Only Unknown Count */
+            profile_only_unknown_count: number;
+            /** Resolvable Unknown Count */
+            resolvable_unknown_count: number;
+        };
+        /** EvidenceResolutionResponse */
+        EvidenceResolutionResponse: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            decision: components["schemas"]["EvidenceDecision"];
+            /** Evidence Text */
+            evidence_text: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Requirement Id
+             * Format: uuid
+             */
+            requirement_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** EvidenceResolutionUpsert */
+        EvidenceResolutionUpsert: {
+            decision: components["schemas"]["EvidenceDecision"];
+            /** Evidence Text */
+            evidence_text?: string | null;
+        };
         /** ExperienceInput */
         ExperienceInput: {
             /** Company Name */
@@ -1292,6 +1403,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobPostingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_evidence_gaps_api_v1_jobs__job_id__evidence_gaps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceGapListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    write_evidence_resolution_api_v1_jobs__job_id__evidence_gaps__requirement_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                requirement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceResolutionUpsert"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceResolutionResponse"];
                 };
             };
             /** @description Validation Error */

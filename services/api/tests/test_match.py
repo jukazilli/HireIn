@@ -169,6 +169,8 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "partial_compound_evidence_preserved",
         "generic_engineering_degree_family_enabled",
         "stakeholder_interface_evidence_enabled",
+        "human_evidence_resolution_v18_enabled",
+        "human_resolution_only_applies_to_v17_unknowns",
     ]
 
 

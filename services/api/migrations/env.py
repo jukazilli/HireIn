@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from hirein_api.db import Base
 from hirein_api.evals import models as eval_models
+from hirein_api.evidence import models as evidence_models
 from hirein_api.jobs import models as job_models
 from hirein_api.profile import models as profile_models
 
@@ -26,7 +27,7 @@ config.set_main_option(
     ),
 )
 
-_ = (profile_models, job_models, eval_models)
+_ = (profile_models, job_models, eval_models, evidence_models)
 target_metadata = Base.metadata
 
 

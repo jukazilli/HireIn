@@ -122,7 +122,7 @@
       form.willing_to_travel = data.preferences.willing_to_travel;
       form.willing_to_relocate = data.preferences.willing_to_relocate;
       form.skills = data.skills.map((item) => item.name).join(', ');
-      form.facts = data.facts.map((item) => item.value).join('\n');
+      form.facts = data.facts.filter((item) => !item.source_ref?.startsWith('evidence-gap:')).map((item) => item.value).join('\n');
       form.experiences = data.experiences.map((item) => ({
         company_name: item.company_name, role_title: item.role_title,
         start_date: item.start_date, end_date: item.end_date ?? '', is_current: item.is_current,

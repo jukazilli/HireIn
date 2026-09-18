@@ -13,6 +13,7 @@ from starlette.responses import JSONResponse, Response
 
 from hirein_api.db import create_engine, create_session_factory
 from hirein_api.evals.routes import router as evals_router
+from hirein_api.evidence.routes import router as evidence_router
 from hirein_api.jobs.routes import router as jobs_router
 from hirein_api.profile.routes import router as profile_router
 from hirein_api.security import valid_backend_token, valid_ingestion_token
@@ -35,7 +36,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="HireIn API",
-    version="0.5.0",
+    version="0.6.0",
     description="Core API for the HireIn single-user pilot.",
     lifespan=lifespan,
 )
@@ -81,6 +82,7 @@ async def protect_pilot_api(request: Request, call_next: CallNext) -> Response:
 app.include_router(profile_router)
 app.include_router(jobs_router)
 app.include_router(evals_router)
+app.include_router(evidence_router)
 
 
 @app.get("/health/live", response_model=HealthResponse, tags=["health"])
