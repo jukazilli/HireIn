@@ -230,9 +230,6 @@ def _match_stakeholder_interface(
     baseline: RequirementMatchResponse,
     index: CandidateIndex,
 ) -> RequirementMatchResponse:
-    if baseline.status == RequirementMatchStatus.MATCHED:
-        return baseline
-
     kind = RequirementKind(requirement.kind)
     if kind not in {
         RequirementKind.SKILL,
@@ -252,13 +249,33 @@ def _match_stakeholder_interface(
 
     stakeholder_evidence = _stakeholder_interface_evidence(index)
     if not stakeholder_evidence:
-        return baseline
+        if baseline.status == RequirementMatchStatus.GAP:
+            return baseline
+        return _result(
+            requirement,
+            RequirementMatchStatus.UNKNOWN,
+            (
+                "O requisito exige interação com stakeholders, mas não há "
+                "evidência confirmada suficiente dessa interface."
+            ),
+            baseline.evidence,
+        )
 
     evidence = list(stakeholder_evidence)
     if "requisito" in value:
         requirement_evidence = _concept_evidence(index, "requirements")
         if not requirement_evidence:
-            return baseline
+            if baseline.status == RequirementMatchStatus.GAP:
+                return baseline
+            return _result(
+                requirement,
+                RequirementMatchStatus.UNKNOWN,
+                (
+                    "Há evidência de interface com stakeholders, mas falta "
+                    "evidência confirmada de levantamento/análise de requisitos."
+                ),
+                _dedupe_evidence(evidence + list(baseline.evidence)),
+            )
         evidence.extend(requirement_evidence[:2])
 
     return _concept_result(
@@ -369,9 +386,6 @@ def _match_compound_evidence(
     baseline: RequirementMatchResponse,
     index: CandidateIndex,
 ) -> RequirementMatchResponse:
-    if baseline.status == RequirementMatchStatus.MATCHED:
-        return baseline
-
     components = _compound_components(requirement)
     if not components:
         return baseline
@@ -389,7 +403,18 @@ def _match_compound_evidence(
 
     evidence = _dedupe_evidence(evidence)
     if not evidence:
-        return baseline
+        if baseline.status == RequirementMatchStatus.GAP:
+            return baseline
+        return _result(
+            requirement,
+            RequirementMatchStatus.UNKNOWN,
+            (
+                "O requisito é composto e precisa de evidência para todos os "
+                "componentes explícitos; nenhum componente foi confirmado "
+                "com segurança pela validação v1.7."
+            ),
+            baseline.evidence,
+        )
 
     if missing:
         return _result(
@@ -399,7 +424,7 @@ def _match_compound_evidence(
                 "Parte do requisito composto foi confirmada, mas faltam evidências "
                 "para: " + ", ".join(missing) + "."
             ),
-            evidence,
+            _dedupe_evidence(evidence + list(baseline.evidence)),
         )
 
     matched = _concept_result(
@@ -418,8 +443,8 @@ def _enhance_requirement_v17(
 ) -> RequirementMatchResponse:
     result = _match_generic_engineering_education(requirement, baseline, index)
     result = _match_implementation_project_methodology(requirement, result, index)
-    result = _match_stakeholder_interface(requirement, result, index)
     result = _match_compound_evidence(requirement, result, index)
+    result = _match_stakeholder_interface(requirement, result, index)
     return result
 
 
