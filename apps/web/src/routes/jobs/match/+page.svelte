@@ -12,6 +12,8 @@
   let evidenceError = '';
   let evidenceMessage = '';
   let evidenceSavingId = '';
+  let atomicEditingId = '';
+  let atomicDrafts: Record<string, string[]> = {};
 
   const bandLabel: Record<string, string> = {
     STRONG: 'Aderência profissional forte', GOOD: 'Boa aderência profissional',
@@ -26,6 +28,7 @@
 
   const resolutionLabel: Record<EvidenceDecision, string> = {
     CONFIRMED: 'Confirmado por você',
+    PARTIAL: 'Você possui parte dos itens',
     NOT_HAVE: 'Você indicou que não possui',
     UNSURE: 'Ainda não confirmado'
   };
@@ -56,6 +59,8 @@
     error = '';
     evidenceError = '';
     evidenceMessage = '';
+    atomicEditingId = '';
+    atomicDrafts = {};
     calculating = true;
     try {
       result = await api.getJobMatch(job.id);
@@ -69,28 +74,56 @@
     }
   }
 
-  async function resolveGap(gap: EvidenceGapItem, decision: EvidenceDecision) {
+  function beginAtomicSelection(gap: EvidenceGapItem) {
+    atomicEditingId = gap.requirement_id;
+    atomicDrafts = {
+      ...atomicDrafts,
+      [gap.requirement_id]: [...(gap.resolution?.confirmed_atoms ?? [])]
+    };
+    evidenceError = '';
+    evidenceMessage = '';
+  }
+
+  function toggleAtomicOption(gap: EvidenceGapItem, option: string) {
+    const current = atomicDrafts[gap.requirement_id] ?? [];
+    atomicDrafts = {
+      ...atomicDrafts,
+      [gap.requirement_id]: current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option]
+    };
+  }
+
+  async function resolveGap(
+    gap: EvidenceGapItem,
+    decision: EvidenceDecision,
+    confirmedAtoms: string[] = []
+  ) {
     if (!selectedJob) return;
 
     evidenceSavingId = gap.requirement_id;
     evidenceError = '';
     evidenceMessage = '';
     try {
-      await api.upsertEvidenceResolution(selectedJob.id, gap.requirement_id, {
+      const saved = await api.upsertEvidenceResolution(selectedJob.id, gap.requirement_id, {
         decision,
-        evidence_text: null
+        evidence_text: null,
+        confirmed_atoms: confirmedAtoms
       });
 
       [result, evidenceGaps] = await Promise.all([
         api.getJobMatch(selectedJob.id),
         api.getEvidenceGaps(selectedJob.id)
       ]);
+      atomicEditingId = '';
       evidenceMessage =
-        decision === 'CONFIRMED'
-          ? 'Experiência confirmada. O HireIn aprendeu este conceito e recalculou o Professional Fit.'
-          : decision === 'NOT_HAVE'
-            ? 'Gap confirmado por você. O Professional Fit foi recalculado.'
-            : 'Item mantido como desconhecido.';
+        saved.decision === 'CONFIRMED'
+          ? 'Experiência confirmada. O HireIn aprendeu os conceitos selecionados e recalculou o Professional Fit.'
+          : saved.decision === 'PARTIAL'
+            ? 'Conhecimento parcial salvo. Os itens confirmados foram aprendidos, mas o requisito completo continua como gap.'
+            : saved.decision === 'NOT_HAVE'
+              ? 'Gap confirmado por você. O Professional Fit foi recalculado.'
+              : 'Item mantido como desconhecido.';
     } catch (reason) {
       evidenceError = reason instanceof Error ? reason.message : 'Não foi possível salvar sua resposta.';
     } finally {
@@ -113,12 +146,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. No v1.9, UNKNOWNs elegíveis podem ser confirmados por você sem texto livre; o HireIn persiste o conceito da vaga como evidência estruturada para análises futuras.
+        avaliar com segurança. No v1.10, requisitos compostos são quebrados em conceitos atômicos antes de entrarem no Candidate Core, evitando aprender alternativas que você nunca confirmou.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.9 com aprendizado estruturado.</strong>
-      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. O resolver humano atua somente no que continua UNKNOWN e transforma a resposta em conhecimento reutilizável do perfil.
+      <strong>Match v1.10 com evidência atômica.</strong>
+      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. Em requisitos compostos, você escolhe exatamente quais itens possui antes de o HireIn aprender algo novo.
     </aside>
   </section>
 
@@ -219,7 +252,7 @@
               <p class="section-kicker">Evidence Gap Resolver</p>
               <h2 class="section-title">O que ainda vale a pena confirmar?</h2>
               <p class="section-description">
-                O HireIn pergunta apenas sobre itens que o v1.7 não conseguiu comprovar nem negar. Você só responde Tenho, Não tenho ou Não sei; o conceito confirmado é normalizado a partir do próprio requisito da vaga.
+                O HireIn pergunta apenas sobre itens que o v1.7 não conseguiu comprovar nem negar. Requisitos simples continuam com Tenho, Não tenho ou Não sei; listas como “Bizagi, Visio ou Miro” pedem quais itens você realmente possui.
               </p>
             </div>
             <div class="resolver-confidence">
