@@ -29,6 +29,44 @@ export type RequirementKind = Schemas['RequirementKind'];
 export type RequirementImportance = Schemas['RequirementImportance'];
 export type FactKind = Schemas['FactKind'];
 
+export type EvidenceDecision = 'CONFIRMED' | 'NOT_HAVE' | 'UNSURE';
+
+export type EvidenceResolution = {
+  id: string;
+  requirement_id: string;
+  decision: EvidenceDecision;
+  evidence_text: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EvidenceGapItem = {
+  requirement_id: string;
+  kind: RequirementKind;
+  importance: RequirementImportance;
+  value: string;
+  weight: number;
+  coverage_impact: number;
+  question: string;
+  partial_evidence: JobMatch['requirement_results'][number]['evidence'];
+  resolution: EvidenceResolution | null;
+};
+
+export type EvidenceGapList = {
+  job_id: string;
+  current_confidence: number;
+  current_band: JobMatch['band'];
+  baseline_unknown_count: number;
+  resolvable_unknown_count: number;
+  profile_only_unknown_count: number;
+  gaps: EvidenceGapItem[];
+};
+
+export type EvidenceResolutionUpsert = {
+  decision: EvidenceDecision;
+  evidence_text?: string | null;
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -132,6 +170,17 @@ export const api = {
   replaceJob: (jobId: string, payload: JobPostingUpsert) =>
     request<JobPosting>(`/jobs/${jobId}`, jsonRequest('PUT', payload)),
   getJobMatch: (jobId: string) => request<JobMatch>(`/jobs/${jobId}/match`),
+  getEvidenceGaps: (jobId: string) =>
+    request<EvidenceGapList>(`/jobs/${jobId}/evidence-gaps`),
+  upsertEvidenceResolution: (
+    jobId: string,
+    requirementId: string,
+    payload: EvidenceResolutionUpsert
+  ) =>
+    request<EvidenceResolution>(
+      `/jobs/${jobId}/evidence-gaps/${requirementId}`,
+      jsonRequest('PUT', payload)
+    ),
 
   listReviewJobs: () => request<PilotReviewJob[]>('/evals/jobs'),
   upsertEvaluation: (jobId: string, payload: PilotEvaluationUpsert) =>
