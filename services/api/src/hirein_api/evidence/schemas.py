@@ -23,7 +23,10 @@ class EvidenceResolutionUpsert(BaseModel):
         if self.decision == EvidenceDecision.CONFIRMED:
             if self.evidence_text is None or len(self.evidence_text.strip()) < 12:
                 raise ValueError(
-                    "confirmed evidence requires a concrete description with at least 12 characters"
+                    (
+                        "confirmed evidence requires a concrete description "
+                        "with at least 12 characters"
+                    )
                 )
         return self
 
