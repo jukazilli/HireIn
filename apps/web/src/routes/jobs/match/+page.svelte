@@ -12,8 +12,6 @@
   let evidenceError = '';
   let evidenceMessage = '';
   let evidenceSavingId = '';
-  let editingGapId = '';
-  let evidenceDrafts: Record<string, string> = {};
 
   const bandLabel: Record<string, string> = {
     STRONG: 'Aderência profissional forte', GOOD: 'Boa aderência profissional',
@@ -45,9 +43,6 @@
   async function loadEvidenceGaps(jobId: string) {
     try {
       evidenceGaps = await api.getEvidenceGaps(jobId);
-      evidenceDrafts = Object.fromEntries(
-        evidenceGaps.gaps.map((gap) => [gap.requirement_id, gap.resolution?.evidence_text ?? ''])
-      );
     } catch (reason) {
       evidenceGaps = null;
       evidenceError = reason instanceof Error ? reason.message : 'Não foi possível carregar as lacunas de evidência.';
@@ -61,7 +56,6 @@
     error = '';
     evidenceError = '';
     evidenceMessage = '';
-    editingGapId = '';
     calculating = true;
     try {
       result = await api.getJobMatch(job.id);
@@ -78,32 +72,22 @@
   async function resolveGap(gap: EvidenceGapItem, decision: EvidenceDecision) {
     if (!selectedJob) return;
 
-    const evidenceText = evidenceDrafts[gap.requirement_id]?.trim() ?? '';
-    if (decision === 'CONFIRMED' && evidenceText.length < 12) {
-      evidenceError = 'Descreva uma evidência profissional concreta antes de confirmar.';
-      return;
-    }
-
     evidenceSavingId = gap.requirement_id;
     evidenceError = '';
     evidenceMessage = '';
     try {
       await api.upsertEvidenceResolution(selectedJob.id, gap.requirement_id, {
         decision,
-        evidence_text: decision === 'CONFIRMED' ? evidenceText : null
+        evidence_text: null
       });
 
       [result, evidenceGaps] = await Promise.all([
         api.getJobMatch(selectedJob.id),
         api.getEvidenceGaps(selectedJob.id)
       ]);
-      evidenceDrafts = Object.fromEntries(
-        evidenceGaps.gaps.map((item) => [item.requirement_id, item.resolution?.evidence_text ?? ''])
-      );
-      editingGapId = '';
       evidenceMessage =
         decision === 'CONFIRMED'
-          ? 'Evidência confirmada. O Professional Fit foi recalculado.'
+          ? 'Experiência confirmada. O HireIn aprendeu este conceito e recalculou o Professional Fit.'
           : decision === 'NOT_HAVE'
             ? 'Gap confirmado por você. O Professional Fit foi recalculado.'
             : 'Item mantido como desconhecido.';
@@ -129,12 +113,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. No v1.8, UNKNOWNs relevantes podem ser resolvidos por você com evidência concreta, sem alterar pesos ou esconder incerteza.
+        avaliar com segurança. No v1.9, UNKNOWNs elegíveis podem ser confirmados por você sem texto livre; o HireIn persiste o conceito da vaga como evidência estruturada para análises futuras.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.8 auditável.</strong>
-      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. O resolver humano atua somente no que continua UNKNOWN.
+      <strong>Match v1.9 com aprendizado estruturado.</strong>
+      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. O resolver humano atua somente no que continua UNKNOWN e transforma a resposta em conhecimento reutilizável do perfil.
     </aside>
   </section>
 
@@ -235,7 +219,7 @@
               <p class="section-kicker">Evidence Gap Resolver</p>
               <h2 class="section-title">O que ainda vale a pena confirmar?</h2>
               <p class="section-description">
-                O HireIn pergunta apenas sobre itens que o v1.7 não conseguiu comprovar nem negar. Uma confirmação positiva exige contexto profissional concreto.
+                O HireIn pergunta apenas sobre itens que o v1.7 não conseguiu comprovar nem negar. Você só responde Tenho, Não tenho ou Não sei; o conceito confirmado é normalizado a partir do próprio requisito da vaga.
               </p>
             </div>
             <div class="resolver-confidence">
@@ -273,49 +257,30 @@
                   {#if gap.resolution}
                     <div class="resolution-state" data-decision={gap.resolution.decision}>
                       <strong>{resolutionLabel[gap.resolution.decision]}</strong>
-                      {#if gap.resolution.evidence_text}<span>{gap.resolution.evidence_text}</span>{/if}
+                      {#if gap.resolution.decision === 'CONFIRMED'}<span>Conhecimento incorporado ao perfil para futuras análises.</span>{/if}
                     </div>
                   {/if}
 
-                  {#if editingGapId === gap.requirement_id}
-                    <div class="evidence-editor">
-                      <label class="field">
-                        Evidência profissional concreta
-                        <textarea
-                          bind:value={evidenceDrafts[gap.requirement_id]}
-                          rows="3"
-                          placeholder="Ex.: em qual projeto, atividade ou contexto você aplicou isso?"
-                        ></textarea>
-                      </label>
-                      <div class="resolver-actions">
-                        <button
-                          class="btn btn-primary"
-                          type="button"
-                          disabled={evidenceSavingId === gap.requirement_id}
-                          onclick={() => resolveGap(gap, 'CONFIRMED')}
-                        >
-                          {evidenceSavingId === gap.requirement_id ? 'Salvando…' : 'Confirmar evidência'}
-                        </button>
-                        <button class="btn btn-secondary" type="button" onclick={() => editingGapId = ''}>Cancelar</button>
-                      </div>
-                    </div>
-                  {:else}
-                    <div class="resolver-actions">
-                      <button class="btn btn-primary" type="button" onclick={() => editingGapId = gap.requirement_id}>Tenho evidência</button>
-                      <button
-                        class="btn btn-secondary"
-                        type="button"
-                        disabled={evidenceSavingId === gap.requirement_id}
-                        onclick={() => resolveGap(gap, 'NOT_HAVE')}
-                      >Não tenho</button>
-                      <button
-                        class="btn btn-ghost"
-                        type="button"
-                        disabled={evidenceSavingId === gap.requirement_id}
-                        onclick={() => resolveGap(gap, 'UNSURE')}
-                      >Ainda não sei</button>
-                    </div>
-                  {/if}
+                  <div class="resolver-actions">
+                    <button
+                      class="btn btn-primary"
+                      type="button"
+                      disabled={evidenceSavingId === gap.requirement_id}
+                      onclick={() => resolveGap(gap, 'CONFIRMED')}
+                    >Tenho</button>
+                    <button
+                      class="btn btn-secondary"
+                      type="button"
+                      disabled={evidenceSavingId === gap.requirement_id}
+                      onclick={() => resolveGap(gap, 'NOT_HAVE')}
+                    >Não tenho</button>
+                    <button
+                      class="btn btn-ghost"
+                      type="button"
+                      disabled={evidenceSavingId === gap.requirement_id}
+                      onclick={() => resolveGap(gap, 'UNSURE')}
+                    >Não sei</button>
+                  </div>
                 </article>
               {/each}
             </div>
@@ -423,7 +388,6 @@
   .resolution-state span { color: var(--text-muted); font-size: .72rem; line-height: 1.45; }
   .resolution-state[data-decision='CONFIRMED'] { background: var(--success-soft); border-color: var(--success); }
   .resolution-state[data-decision='NOT_HAVE'] { background: var(--danger-soft); border-color: var(--danger); }
-  .evidence-editor { display: grid; gap: .65rem; }
   .resolver-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
   .resolver-profile-note { margin-top: .25rem; }
   .resolver-profile-note a { margin-left: .3rem; font-weight: 700; }
