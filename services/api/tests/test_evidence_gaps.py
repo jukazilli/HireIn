@@ -107,7 +107,7 @@ def test_lists_resolvable_and_profile_only_unknowns() -> None:
         {
             "kind": "SKILL",
             "importance": "REQUIRED",
-            "value": "Organização e atenção a detalhes",
+            "value": "Organização",
         },
         {
             "kind": "TOOL",
@@ -131,7 +131,7 @@ def test_lists_resolvable_and_profile_only_unknowns() -> None:
     assert payload["resolvable_unknown_count"] == 2
     assert payload["profile_only_unknown_count"] == 1
     assert payload["gaps"][0]["importance"] == "REQUIRED"
-    assert payload["gaps"][0]["value"] == "Organização e atenção a detalhes"
+    assert payload["gaps"][0]["value"] == "Organização"
     assert payload["gaps"][0]["coverage_impact"] > payload["gaps"][1]["coverage_impact"]
 
 
@@ -140,7 +140,7 @@ def test_confirmed_resolution_matches_unknown_and_adds_candidate_fact() -> None:
         {
             "kind": "SKILL",
             "importance": "REQUIRED",
-            "value": "Organização e atenção a detalhes",
+            "value": "Organização",
         }
     ]
     with TestClient(app) as client:
@@ -164,7 +164,7 @@ def test_confirmed_resolution_matches_unknown_and_adds_candidate_fact() -> None:
     assert match["score"] == 100
     assert any(
         item["entity_type"] == "FACT"
-        and item["value"] == "Organização e atenção a detalhes"
+        and item["value"] == "Organização"
         and item["source_type"] == "USER_CONFIRMED"
         for item in match["requirement_results"][0]["evidence"]
     )
@@ -172,7 +172,7 @@ def test_confirmed_resolution_matches_unknown_and_adds_candidate_fact() -> None:
     managed_fact = next(
         item
         for item in profile["facts"]
-        if item["value"] == "Organização e atenção a detalhes"
+        if item["value"] == "Organização"
     )
     assert managed_fact["kind"] == "OTHER"
     assert managed_fact["source_type"] == "USER_CONFIRMED"
@@ -400,3 +400,127 @@ def test_existing_confirmation_can_be_reversed_and_removes_learned_fact() -> Non
         for item in profile["facts"]
     )
     assert match["requirement_results"][0]["status"] == "GAP"
+
+
+
+def test_compound_or_tool_exposes_atomic_options_and_learns_only_selected_atom() -> None:
+    requirements = [
+        {
+            "kind": "TOOL",
+            "importance": "REQUIRED",
+            "value": "Bizagi, Visio ou Miro",
+        }
+    ]
+
+    with TestClient(app) as client:
+        job_id, job = _create_profile_and_job(client, requirements)
+        requirement_id = job["requirements"][0]["id"]
+
+        gaps = client.get(f"/api/v1/jobs/{job_id}/evidence-gaps").json()
+        gap = gaps["gaps"][0]
+        assert gap["atomic_operator"] == "ANY"
+        assert gap["atomic_options"] == ["Bizagi", "Visio", "Miro"]
+
+        saved = client.put(
+            f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
+            json={"decision": "CONFIRMED", "confirmed_atoms": ["Miro"]},
+        )
+        assert saved.status_code == 200
+        assert saved.json()["decision"] == "CONFIRMED"
+        assert saved.json()["confirmed_atoms"] == ["Miro"]
+
+        profile = client.get("/api/v1/profile").json()
+        current_match = client.get(f"/api/v1/jobs/{job_id}/match").json()
+
+        miro_payload = _job_payload(
+            [{"kind": "TOOL", "importance": "REQUIRED", "value": "Miro"}]
+        )
+        miro_payload["company_name"] = "Empresa Miro"
+        miro_payload["title"] = "Analista Miro"
+        miro_payload["description_raw"] = "Valida reaproveitamento atômico positivo."
+        miro_job = client.post("/api/v1/jobs", json=miro_payload).json()
+        miro_match = client.get(f"/api/v1/jobs/{miro_job['id']}/match").json()
+
+        bizagi_payload = _job_payload(
+            [{"kind": "TOOL", "importance": "REQUIRED", "value": "Bizagi"}]
+        )
+        bizagi_payload["company_name"] = "Empresa Bizagi"
+        bizagi_payload["title"] = "Analista Bizagi"
+        bizagi_payload["description_raw"] = "Valida ausência de inferência entre alternativas."
+        bizagi_job = client.post("/api/v1/jobs", json=bizagi_payload).json()
+        bizagi_match = client.get(f"/api/v1/jobs/{bizagi_job['id']}/match").json()
+
+    learned = [
+        item
+        for item in profile["facts"]
+        if item["source_ref"] and item["source_ref"].startswith("evidence-gap:")
+    ]
+    assert [item["value"] for item in learned] == ["Miro"]
+    assert current_match["requirement_results"][0]["status"] == "MATCHED"
+    assert miro_match["requirement_results"][0]["status"] == "MATCHED"
+    assert bizagi_match["requirement_results"][0]["status"] == "UNKNOWN"
+
+
+def test_compound_all_partial_selection_becomes_gap_but_keeps_positive_atom() -> None:
+    requirements = [
+        {
+            "kind": "TOOL",
+            "importance": "REQUIRED",
+            "value": "Excel e PowerPoint",
+        }
+    ]
+
+    with TestClient(app) as client:
+        job_id, job = _create_profile_and_job(client, requirements)
+        requirement_id = job["requirements"][0]["id"]
+
+        gaps = client.get(f"/api/v1/jobs/{job_id}/evidence-gaps").json()
+        gap = gaps["gaps"][0]
+        assert gap["atomic_operator"] == "ALL"
+        assert gap["atomic_options"] == ["Excel", "PowerPoint"]
+
+        saved = client.put(
+            f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
+            json={"decision": "CONFIRMED", "confirmed_atoms": ["Excel"]},
+        )
+        assert saved.status_code == 200
+        assert saved.json()["decision"] == "PARTIAL"
+        assert saved.json()["confirmed_atoms"] == ["Excel"]
+
+        match = client.get(f"/api/v1/jobs/{job_id}/match").json()
+        profile = client.get("/api/v1/profile").json()
+
+    assert match["requirement_results"][0]["status"] == "GAP"
+    assert match["missing_required"] == 1
+    assert any(
+        item["value"] == "Excel"
+        and item["source_ref"].startswith("evidence-gap:")
+        for item in profile["facts"]
+    )
+    assert not any(
+        item["value"] == "PowerPoint"
+        and item["source_ref"].startswith("evidence-gap:")
+        for item in profile["facts"]
+    )
+
+
+def test_compound_confirmation_requires_explicit_atomic_selection() -> None:
+    requirements = [
+        {
+            "kind": "SKILL",
+            "importance": "REQUIRED",
+            "value": "Scrum e Kanban",
+        }
+    ]
+
+    with TestClient(app) as client:
+        job_id, job = _create_profile_and_job(client, requirements)
+        requirement_id = job["requirements"][0]["id"]
+
+        response = client.put(
+            f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
+            json={"decision": "CONFIRMED"},
+        )
+
+    assert response.status_code == 409
+    assert "select at least one atomic item" in response.json()["detail"]
