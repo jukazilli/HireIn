@@ -56,11 +56,11 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         Escolha uma vaga e veja o que foi atendido, o que está faltando e o que o HireIn ainda não consegue
-        avaliar com segurança. No v1.6, aderência profissional e compatibilidade da oportunidade são dimensões separadas.
+        avaliar com segurança. No v1.7, a separação do v1.6 é preservada e a recuperação de evidências profissionais ficou mais precisa.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.6 determinístico.</strong>
+      <strong>Match v1.7 determinístico.</strong>
       Professional Fit mede capacidade; Opportunity Compatibility mede condições da vaga. Apply Intent continua sendo sua decisão.
     </aside>
   </section>
