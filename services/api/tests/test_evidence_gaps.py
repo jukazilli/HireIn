@@ -115,10 +115,9 @@ def test_lists_resolvable_and_profile_only_unknowns() -> None:
             "value": "Power BI",
         },
         {
-            "kind": "LANGUAGE",
+            "kind": "CERTIFICATION",
             "importance": "REQUIRED",
-            "value": "Inglês",
-            "required_language_proficiency": "ADVANCED",
+            "value": "PMP",
         },
     ]
 
