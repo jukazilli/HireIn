@@ -2,7 +2,7 @@
 
 ## Status
 
-Direção de produto e arquitetura atualizada após o Blind Holdout #4 e a definição do Match v1.6.
+Direção de produto e arquitetura atualizada após o Blind Holdout #4, a separação estrutural do Match v1.6 e a recuperação de evidências do Match v1.7.
 
 O HireIn não deve depender de um único score para decidir o que procurar, o que a pessoa consegue fazer, quais oportunidades são viáveis e em quais vagas ela deseja tentar.
 
@@ -190,7 +190,7 @@ blockers[]
 preference results
 ```
 
-No v1.6, blocker explícito de localização pode tornar `blocked = true`, mas não altera o Professional Fit.
+Desde o v1.6, blocker explícito de localização pode tornar `blocked = true`, mas não altera o Professional Fit.
 
 Conflitos de preferência que não são blockers permanecem conflitos, sem impedir a candidatura automaticamente.
 
@@ -245,7 +245,7 @@ Resultado público-safe:
 
 O conjunto agora é somente regressão/desenvolvimento.
 
-## 11. Match v1.6
+## 11. Match v1.6 + v1.7
 
 O v1.6 formaliza:
 
@@ -257,7 +257,7 @@ Por compatibilidade, os campos legados `score`, `band`, `requirement_score` e `e
 
 `preference_score` permanece disponível como alias do score de Opportunity Compatibility.
 
-O contrato novo também expõe objetos explícitos para as duas dimensões algorítmicas.
+O contrato novo também expõe objetos explícitos para as duas dimensões algorítmicas. O v1.7 preserva esse contrato e melhora somente a recuperação auditável de evidências do Professional Fit, sem recalibrar pesos.
 
 ## 12. Próximo experimento
 
