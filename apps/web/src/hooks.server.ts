@@ -3,7 +3,7 @@ import { redirect, type Handle } from '@sveltejs/kit';
 
 import { pilotAuthConfigured, validPilotSession } from '$lib/server/pilot-auth';
 
-const PUBLIC_PATHS = new Set(['/login']);
+const PUBLIC_PATHS = new Set(['/login', '/ops/match-v1-7-regression']);
 
 export const handle: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname;
