@@ -163,7 +163,9 @@ def test_confirmed_resolution_matches_unknown_and_adds_candidate_fact() -> None:
     assert match["evaluation_coverage"] == 100
     assert match["score"] == 100
     assert any(
-        item["entity_type"] == "EVIDENCE_RESOLUTION"
+        item["entity_type"] == "FACT"
+        and item["value"] == "Organização e atenção a detalhes"
+        and item["source_type"] == "USER_CONFIRMED"
         for item in match["requirement_results"][0]["evidence"]
     )
 
@@ -350,3 +352,45 @@ def test_confirmed_resolution_is_reused_by_future_job_without_asking_again() -> 
     assert match["evaluation_coverage"] == 100
     assert gaps["baseline_unknown_count"] == 0
     assert gaps["resolvable_unknown_count"] == 0
+
+
+def test_existing_confirmation_can_be_reversed_and_removes_learned_fact() -> None:
+    requirements = [
+        {
+            "kind": "SKILL",
+            "importance": "REQUIRED",
+            "value": "Gestão de prioridades",
+        }
+    ]
+
+    with TestClient(app) as client:
+        job_id, job = _create_profile_and_job(client, requirements)
+        requirement_id = job["requirements"][0]["id"]
+
+        assert client.put(
+            f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
+            json={"decision": "CONFIRMED"},
+        ).status_code == 200
+
+        confirmed_profile = client.get("/api/v1/profile").json()
+        assert any(
+            item["value"] == "Gestão de prioridades"
+            and item["source_ref"].startswith("evidence-gap:")
+            for item in confirmed_profile["facts"]
+        )
+
+        reversed_response = client.put(
+            f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
+            json={"decision": "NOT_HAVE"},
+        )
+        assert reversed_response.status_code == 200
+
+        profile = client.get("/api/v1/profile").json()
+        match = client.get(f"/api/v1/jobs/{job_id}/match").json()
+
+    assert not any(
+        item["value"] == "Gestão de prioridades"
+        and item["source_ref"].startswith("evidence-gap:")
+        for item in profile["facts"]
+    )
+    assert match["requirement_results"][0]["status"] == "GAP"
