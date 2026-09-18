@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Self
-
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from hirein_api.evidence.domain import EvidenceDecision
 from hirein_api.jobs.domain import RequirementImportance, RequirementKind
@@ -17,19 +15,6 @@ class EvidenceResolutionUpsert(BaseModel):
 
     decision: EvidenceDecision
     evidence_text: str | None = Field(default=None, max_length=4000)
-
-    @model_validator(mode="after")
-    def validate_confirmation_evidence(self) -> Self:
-        if (
-            self.decision == EvidenceDecision.CONFIRMED
-            and (self.evidence_text is None or len(self.evidence_text.strip()) < 12)
-        ):
-            raise ValueError(
-                "confirmed evidence requires a concrete description "
-                "with at least 12 characters"
-            )
-        return self
-
 
 class EvidenceResolutionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
