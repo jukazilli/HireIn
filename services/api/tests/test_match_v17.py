@@ -184,7 +184,7 @@ def test_compound_list_keeps_partial_evidence_unknown() -> None:
 
     assert result.status == RequirementMatchStatus.UNKNOWN
     assert result.evidence
-    assert "unitarios" in result.reason
+    assert "unitários" in result.reason
 
 
 def test_process_mapping_alias_is_partial_not_full_documentation_match() -> None:
@@ -199,7 +199,7 @@ def test_process_mapping_alias_is_partial_not_full_documentation_match() -> None
 
     assert result.status == RequirementMatchStatus.UNKNOWN
     assert result.evidence
-    assert "documentacao" in result.reason
+    assert "Documentação de processos" in result.reason
 
 
 def test_stakeholder_interface_matches_explicit_client_business_interface() -> None:
@@ -291,7 +291,7 @@ def test_compound_revalidates_legacy_partial_match() -> None:
 
     assert result.status == RequirementMatchStatus.UNKNOWN
     assert result.evidence
-    assert "unitarios" in result.reason
+    assert "unitários" in result.reason
 
 
 def test_stakeholder_revalidates_legacy_weak_match() -> None:
