@@ -155,21 +155,25 @@ def _restore_shared_prefixes(options: list[str]) -> list[str]:
     if not options:
         return options
 
-    first_words = options[0].split()
-    if len(first_words) < 2:
-        return options
+    repaired: list[str] = []
+    active_head: str | None = None
 
-    head = first_words[0]
-    head_key = _canonical_word(head)
-    if head_key not in _SHARED_PREFIX_HEADS:
-        return options
-
-    repaired = [options[0]]
-    for option in options[1:]:
-        if _looks_like_short_modifier(option):
-            repaired.append(f"{head} {option}")
-        else:
+    for option in options:
+        words = option.split()
+        if (
+            len(words) >= 2
+            and _canonical_word(words[0]) in _SHARED_PREFIX_HEADS
+        ):
+            active_head = words[0]
             repaired.append(option)
+            continue
+
+        if active_head is not None and _looks_like_short_modifier(option):
+            repaired.append(f"{active_head} {option}")
+            continue
+
+        repaired.append(option)
+
     return repaired
 
 
