@@ -7,6 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from hirein_api.evidence.domain import EVIDENCE_GAP_SOURCE_PREFIX
 from hirein_api.profile.models import (
     CandidateCertification,
     CandidateEducation,
@@ -47,7 +48,12 @@ async def get_profile_facts(
 
 
 async def clear_profile_children(session: AsyncSession, profile_id: uuid.UUID) -> None:
-    await session.execute(delete(CandidateFact).where(CandidateFact.profile_id == profile_id))
+    await session.execute(
+        delete(CandidateFact).where(
+            CandidateFact.profile_id == profile_id,
+            CandidateFact.source_ref.not_like(f"{EVIDENCE_GAP_SOURCE_PREFIX}%"),
+        )
+    )
     await session.execute(
         delete(CandidateExperience).where(CandidateExperience.profile_id == profile_id)
     )
