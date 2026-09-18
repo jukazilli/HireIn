@@ -143,11 +143,6 @@ def test_confirmed_resolution_matches_unknown_and_adds_candidate_fact() -> None:
             "value": "Organização e atenção a detalhes",
         }
     ]
-    evidence_text = (
-        "Organizei e priorizei de 30 a 50 demandas mensais, acompanhando "
-        "prazos e detalhes de implantação."
-    )
-
     with TestClient(app) as client:
         job_id, job = _create_profile_and_job(client, requirements)
         requirement_id = job["requirements"][0]["id"]
@@ -157,7 +152,7 @@ def test_confirmed_resolution_matches_unknown_and_adds_candidate_fact() -> None:
 
         saved = client.put(
             f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
-            json={"decision": "CONFIRMED", "evidence_text": evidence_text},
+            json={"decision": "CONFIRMED"},
         )
         assert saved.status_code == 200
 
@@ -168,11 +163,18 @@ def test_confirmed_resolution_matches_unknown_and_adds_candidate_fact() -> None:
     assert match["evaluation_coverage"] == 100
     assert match["score"] == 100
     assert any(
-        item["entity_type"] == "EVIDENCE_RESOLUTION"
+        item["entity_type"] == "FACT"
+        and item["value"] == "Organização e atenção a detalhes"
+        and item["source_type"] == "USER_CONFIRMED"
         for item in match["requirement_results"][0]["evidence"]
     )
 
-    managed_fact = next(item for item in profile["facts"] if item["value"] == evidence_text)
+    managed_fact = next(
+        item
+        for item in profile["facts"]
+        if item["value"] == "Organização e atenção a detalhes"
+    )
+    assert managed_fact["kind"] == "OTHER"
     assert managed_fact["source_type"] == "USER_CONFIRMED"
     assert managed_fact["source_ref"].startswith("evidence-gap:")
 
@@ -231,7 +233,7 @@ def test_unsure_resolution_keeps_requirement_unknown() -> None:
     assert "ainda não confirmado" in match["requirement_results"][0]["reason"]
 
 
-def test_structured_requirement_cannot_be_resolved_by_free_text() -> None:
+def test_structured_requirement_cannot_be_resolved_by_simple_confirmation() -> None:
     requirements = [
         {
             "kind": "SKILL",
@@ -289,15 +291,13 @@ def test_profile_replace_preserves_resolver_managed_fact() -> None:
             "value": "Condução de treinamentos para usuários",
         }
     ]
-    evidence_text = "Conduzi treinamentos funcionais para usuários-chave em implantações."
-
     with TestClient(app) as client:
         job_id, job = _create_profile_and_job(client, requirements)
         requirement_id = job["requirements"][0]["id"]
 
         assert client.put(
             f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
-            json={"decision": "CONFIRMED", "evidence_text": evidence_text},
+            json={"decision": "CONFIRMED"},
         ).status_code == 200
 
         replacement = _profile_payload()
@@ -307,18 +307,65 @@ def test_profile_replace_preserves_resolver_managed_fact() -> None:
         profile = client.get("/api/v1/profile").json()
         match = client.get(f"/api/v1/jobs/{job_id}/match").json()
 
-    managed = [item for item in profile["facts"] if item["value"] == evidence_text]
+    managed = [
+        item
+        for item in profile["facts"]
+        if item["value"] == "Condução de treinamentos para usuários"
+    ]
     assert len(managed) == 1
     assert managed[0]["source_ref"].startswith("evidence-gap:")
     assert match["requirement_results"][0]["status"] == "MATCHED"
 
 
-def test_confirmed_resolution_requires_concrete_text() -> None:
+def test_confirmed_resolution_is_reused_by_future_job_without_asking_again() -> None:
+    learned_requirement = {
+        "kind": "SKILL",
+        "importance": "REQUIRED",
+        "value": "Organização",
+    }
+
+    with TestClient(app) as client:
+        first_job_id, first_job = _create_profile_and_job(
+            client,
+            [learned_requirement],
+        )
+        first_requirement_id = first_job["requirements"][0]["id"]
+
+        response = client.put(
+            f"/api/v1/jobs/{first_job_id}/evidence-gaps/{first_requirement_id}",
+            json={"decision": "CONFIRMED"},
+        )
+        assert response.status_code == 200
+
+        second_payload = _job_payload([learned_requirement])
+        second_payload["company_name"] = "Empresa C"
+        second_payload["title"] = "Analista de Operações"
+        second_payload["description_raw"] = (
+            "Segunda vaga usada para validar reaproveitamento semântico."
+        )
+        second_job = client.post(
+            "/api/v1/jobs",
+            json=second_payload,
+        )
+        assert second_job.status_code == 201
+        second_job_id = second_job.json()["id"]
+
+        match = client.get(f"/api/v1/jobs/{second_job_id}/match").json()
+        gaps = client.get(f"/api/v1/jobs/{second_job_id}/evidence-gaps").json()
+
+    assert match["requirement_results"][0]["status"] == "MATCHED"
+    assert match["score"] == 100
+    assert match["evaluation_coverage"] == 100
+    assert gaps["baseline_unknown_count"] == 0
+    assert gaps["resolvable_unknown_count"] == 0
+
+
+def test_existing_confirmation_can_be_reversed_and_removes_learned_fact() -> None:
     requirements = [
         {
             "kind": "SKILL",
             "importance": "REQUIRED",
-            "value": "Organização",
+            "value": "Gestão de prioridades",
         }
     ]
 
@@ -326,9 +373,30 @@ def test_confirmed_resolution_requires_concrete_text() -> None:
         job_id, job = _create_profile_and_job(client, requirements)
         requirement_id = job["requirements"][0]["id"]
 
-        response = client.put(
+        assert client.put(
             f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
-            json={"decision": "CONFIRMED", "evidence_text": "sim"},
+            json={"decision": "CONFIRMED"},
+        ).status_code == 200
+
+        confirmed_profile = client.get("/api/v1/profile").json()
+        assert any(
+            item["value"] == "Gestão de prioridades"
+            and item["source_ref"].startswith("evidence-gap:")
+            for item in confirmed_profile["facts"]
         )
 
-    assert response.status_code == 422
+        reversed_response = client.put(
+            f"/api/v1/jobs/{job_id}/evidence-gaps/{requirement_id}",
+            json={"decision": "NOT_HAVE"},
+        )
+        assert reversed_response.status_code == 200
+
+        profile = client.get("/api/v1/profile").json()
+        match = client.get(f"/api/v1/jobs/{job_id}/match").json()
+
+    assert not any(
+        item["value"] == "Gestão de prioridades"
+        and item["source_ref"].startswith("evidence-gap:")
+        for item in profile["facts"]
+    )
+    assert match["requirement_results"][0]["status"] == "GAP"

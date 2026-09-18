@@ -93,7 +93,17 @@ def _fact_kind(requirement: JobRequirement) -> FactKind:
         return FactKind.TOOL
     if kind == RequirementKind.DOMAIN:
         return FactKind.DOMAIN
+    if kind == RequirementKind.SKILL:
+        # CandidateFact does not have a SKILL kind. OTHER marks a canonical
+        # semantic skill learned from the resolver without pretending that the
+        # user's click described a concrete responsibility.
+        return FactKind.OTHER
     return FactKind.RESPONSIBILITY
+
+
+def _semantic_fact_value(requirement: JobRequirement) -> str:
+    """Persist the requirement concept, never the user's free-form wording."""
+    return requirement.value.strip()
 
 
 def _resolution_response(
@@ -232,7 +242,7 @@ async def _sync_candidate_fact(
             await session.delete(existing)
         return
 
-    evidence_text = (resolution.evidence_text or "").strip()
+    semantic_value = _semantic_fact_value(requirement)
     now = datetime.now(UTC)
     if existing is None:
         session.add(
@@ -240,7 +250,7 @@ async def _sync_candidate_fact(
                 profile_id=profile_id,
                 experience_id=None,
                 kind=_fact_kind(requirement).value,
-                value=evidence_text,
+                value=semantic_value,
                 source_type=FactSource.USER_CONFIRMED.value,
                 source_ref=source_ref,
                 confidence=Decimal("1.000"),
@@ -250,7 +260,7 @@ async def _sync_candidate_fact(
         return
 
     existing.kind = _fact_kind(requirement).value
-    existing.value = evidence_text
+    existing.value = semantic_value
     existing.source_type = FactSource.USER_CONFIRMED.value
     existing.confidence = Decimal("1.000")
     existing.confirmed_at = now
@@ -285,6 +295,8 @@ async def upsert_evidence_resolution(
             "be resolved by free-text evidence"
         )
 
+    resolution = await get_resolution(session, profile_id, requirement_id)
+
     baseline = await calculate_job_match_v17(session, job_id)
     baseline_result = next(
         (
@@ -294,7 +306,7 @@ async def upsert_evidence_resolution(
         ),
         None,
     )
-    if (
+    if resolution is None and (
         baseline_result is None
         or baseline_result.status != RequirementMatchStatus.UNKNOWN
     ):
@@ -302,7 +314,6 @@ async def upsert_evidence_resolution(
             "human evidence resolution only applies to requirements still UNKNOWN in Match v1.7"
         )
 
-    resolution = await get_resolution(session, profile_id, requirement_id)
     if resolution is None:
         resolution = CandidateEvidenceResolution(
             profile_id=profile_id,
