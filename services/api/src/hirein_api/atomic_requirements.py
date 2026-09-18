@@ -10,6 +10,7 @@ from hirein_api.jobs.domain import RequirementKind
 AtomicOperator = Literal["ANY", "ALL"]
 
 _MAX_ATOMIC_OPTIONS = 8
+_MAX_WORDS_PER_ATOM = 4
 
 # Only heads with a strong, repeatable linguistic pattern are allowed to borrow
 # a complement from the next coordinated phrase. This keeps the parser
@@ -191,5 +192,8 @@ def parse_atomic_requirement(
 
     options = _restore_shared_complements(options)
     options = _restore_shared_prefixes(options)
+
+    if any(len(option.split()) > _MAX_WORDS_PER_ATOM for option in options):
+        return None
 
     return AtomicRequirement(operator=operator, options=tuple(options))
