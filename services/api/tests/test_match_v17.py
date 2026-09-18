@@ -260,3 +260,98 @@ def test_stakeholder_requirement_with_requirements_needs_both_evidence_types() -
 
     assert result.status == RequirementMatchStatus.MATCHED
     assert len(result.evidence) >= 2
+
+
+def test_compound_revalidates_legacy_partial_match() -> None:
+    requirement = _requirement(
+        RequirementKind.SKILL,
+        "Treinamentos, testes funcionais, unitários e integrados",
+    )
+    baseline = _result(
+        requirement,
+        RequirementMatchStatus.MATCHED,
+        "Match legado baseado apenas em termo parcial.",
+    )
+    index = _empty_index(
+        skills=[
+            _skill("Testes funcionais"),
+            _skill("Testes integrados"),
+        ],
+        facts=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                value="Condução de treinamentos para usuários-chave.",
+                kind=FactKind.RESPONSIBILITY.value,
+                source_type="USER_CONFIRMED",
+            )
+        ],
+    )
+
+    result = _match_compound_evidence(requirement, baseline, index)
+
+    assert result.status == RequirementMatchStatus.UNKNOWN
+    assert result.evidence
+    assert "unitarios" in result.reason
+
+
+def test_stakeholder_revalidates_legacy_weak_match() -> None:
+    requirement = _requirement(
+        RequirementKind.RESPONSIBILITY,
+        "Levantamento de requisitos e interação com usuários e stakeholders",
+    )
+    baseline = _result(
+        requirement,
+        RequirementMatchStatus.MATCHED,
+        "Match legado baseado apenas na palavra usuários.",
+    )
+    index = _empty_index(
+        facts=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                value="Condução de levantamentos de requisitos",
+                kind=FactKind.RESPONSIBILITY.value,
+                source_type="USER_CONFIRMED",
+            )
+        ]
+    )
+
+    result = _match_stakeholder_interface(requirement, baseline, index)
+
+    assert result.status == RequirementMatchStatus.UNKNOWN
+    assert "stakeholders" in result.reason
+
+
+def test_stakeholder_revalidates_legacy_match_with_full_evidence() -> None:
+    requirement = _requirement(
+        RequirementKind.RESPONSIBILITY,
+        "Levantamento de requisitos e interação com usuários e stakeholders",
+    )
+    baseline = _result(
+        requirement,
+        RequirementMatchStatus.MATCHED,
+        "Match legado baseado em termo parcial.",
+    )
+    index = _empty_index(
+        experiences=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                role_title="Analista de Implantação",
+                company_name="Empresa",
+                description="Interface entre clientes, negócio e equipes técnicas.",
+                source_type="USER_CONFIRMED",
+            )
+        ],
+        facts=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                value="Condução de levantamentos de requisitos",
+                kind=FactKind.RESPONSIBILITY.value,
+                source_type="USER_CONFIRMED",
+            )
+        ],
+    )
+
+    result = _match_stakeholder_interface(requirement, baseline, index)
+
+    assert result.status == RequirementMatchStatus.MATCHED
+    assert len(result.evidence) >= 2
