@@ -37,6 +37,21 @@ async def build_blind_report(
                     "score": match.score,
                     "band": match.band,
                     "evaluation_coverage": match.evaluation_coverage,
+                    "ranking_score": (
+                        match.professional_fit.ranking_score
+                        if match.professional_fit is not None
+                        else None
+                    ),
+                    "score_floor": (
+                        match.professional_fit.score_floor
+                        if match.professional_fit is not None
+                        else None
+                    ),
+                    "score_ceiling": (
+                        match.professional_fit.score_ceiling
+                        if match.professional_fit is not None
+                        else None
+                    ),
                     "matched_required": match.matched_required,
                     "missing_required": match.missing_required,
                     "matched_preferred": match.matched_preferred,
