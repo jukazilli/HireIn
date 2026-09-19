@@ -682,6 +682,7 @@ export interface components {
             matched_preferred: number;
             /** Matched Required */
             matched_required: number;
+            job_quality?: components["schemas"]["JobQualityResponse"] | null;
             /** Missing Preferred */
             missing_preferred: number;
             /** Missing Required */
@@ -705,6 +706,17 @@ export interface components {
             score: number | null;
             /** Unknown Requirements */
             unknown_requirements: number;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** JobQualityResponse */
+        JobQualityResponse: {
+            /** Declared Role */
+            declared_role?: string | null;
+            /** Rankable */
+            rankable: boolean;
+            /** Status */
+            status: string;
             /** Warnings */
             warnings: string[];
         };
@@ -1004,6 +1016,12 @@ export interface components {
              * Format: uuid
              */
             job_id: string;
+            /** Job Quality Status */
+            job_quality_status?: string | null;
+            /** Job Quality Warnings */
+            job_quality_warnings: string[];
+            /** Rankable */
+            rankable: boolean;
             /** Ranking Score */
             ranking_score: number;
             /** Reason */
