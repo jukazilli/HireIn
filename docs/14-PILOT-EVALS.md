@@ -90,13 +90,13 @@ A rota do piloto é:
 Ela permite:
 
 - escolher uma vaga já cadastrada;
-- visualizar o Match atual;
-- comparar score e cobertura com a percepção humana;
-- registrar nota `0–4`;
-- registrar blocker real;
+- registrar nota `0–4` sem revelar o Match durante a etapa humana;
+- registrar Apply Intent e blocker real;
 - escrever um motivo livre;
 - classificar o erro dominante quando houver;
 - acompanhar métricas agregadas sem editar JSON manualmente.
+
+No protocolo de holdout cego, o Match só é acessado depois que a avaliação humana do lote foi concluída.
 
 As labels ficam persistidas no PostgreSQL do piloto pela tabela:
 
@@ -186,6 +186,8 @@ O relatório expõe separadamente:
 
 Esse ajuste não transforma UNKNOWN em GAP e não altera a label humana.
 
+Opportunity Compatibility, blockers de localização/contrato/modalidade e Apply Intent **não alteram esse ranking de benchmark**. O ground truth aqui é somente Professional Fit. Essas dimensões podem ser combinadas posteriormente pelo ranking/recomendação de produto, mas não pela métrica usada para validar capacidade profissional.
+
 ## 7. Como vagas sem score são tratadas
 
 Uma vaga com:
@@ -195,9 +197,9 @@ score = null
 band = INSUFFICIENT_DATA
 ```
 
-não recebe score artificial.
+não recebe um Professional Fit inventado.
 
-Na baseline ela é posicionada depois das vagas com score. Assim, falta de cobertura aparece como problema mensurável em vez de ser escondida.
+Para ordenação do benchmark, o sinal confidence-aware usa o prior neutro de 50. Assim, uma vaga sem evidência fica neutra: ela pode ficar acima de uma incompatibilidade profissional conhecida, mas não é promovida como alta aderência. A falta de cobertura continua explícita em `coverage`, `band` e na faixa de Fit.
 
 ---
 
