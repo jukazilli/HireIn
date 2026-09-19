@@ -166,6 +166,26 @@ O NDCG preserva toda a escala `0–4`, premiando rankings que colocam vagas exce
 
 ---
 
+## 6.1 Ranking confidence-aware no Match v1.12
+
+O benchmark preserva o Professional Fit observado, mas a ordenação usa um sinal ajustado pela cobertura:
+
+```text
+ranking_score =
+    observed_fit * confidence
+  + 50 * (1 - confidence)
+```
+
+O prior neutro de 50 evita que um `100%` calculado com pouca evidência seja tratado como equivalente a um `100%` completamente avaliado.
+
+O relatório expõe separadamente:
+
+- `score`: Professional Fit observado;
+- `coverage`: confiança/cobertura da evidência;
+- `ranking_score`: sinal usado para ordenação do benchmark.
+
+Esse ajuste não transforma UNKNOWN em GAP e não altera a label humana.
+
 ## 7. Como vagas sem score são tratadas
 
 Uma vaga com:
