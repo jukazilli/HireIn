@@ -45,6 +45,9 @@ class ProfessionalFitResponse(BaseModel):
     score: int | None
     confidence: int
     band: MatchBand
+    ranking_score: int | None = None
+    score_floor: int | None = None
+    score_ceiling: int | None = None
 
 
 class OpportunityCompatibilityResponse(BaseModel):
