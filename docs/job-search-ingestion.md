@@ -38,6 +38,17 @@ Keep `description_raw` faithful to the source. Structured requirements may only 
 
 Use the most specific source kind available (`ATS`, `JOB_BOARD`, or `COMPANY_SITE`) and preserve the original source/apply URLs and external job identifier when available. Duplicate source identities are rejected by the API.
 
+### Quality gate
+
+Match v1.14 adds a conservative normalization quality gate. When the source text explicitly declares a target role that conflicts with the posting title, the job remains auditable but is marked:
+
+```text
+job_quality.status = REVIEW
+job_quality.rankable = false
+```
+
+The ingestion process should prefer correcting the source/normalization over compensating for the conflict inside the matcher.
+
 ## Security
 
 The ingestion token is a server-to-server credential. It must be stored only in a secret/environment variable and never committed to the repository or exposed to the browser. When `HIREIN_JOB_INGESTION_TOKEN` is not configured, ingestion-token authentication is closed by default.

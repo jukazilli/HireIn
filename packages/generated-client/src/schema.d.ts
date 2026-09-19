@@ -678,6 +678,7 @@ export interface components {
              * Format: uuid
              */
             job_id: string;
+            job_quality?: components["schemas"]["JobQualityResponse"] | null;
             /** Matched Preferred */
             matched_preferred: number;
             /** Matched Required */
@@ -818,6 +819,17 @@ export interface components {
             /** Valid Through */
             valid_through?: string | null;
             work_model?: components["schemas"]["WorkModel"] | null;
+        };
+        /** JobQualityResponse */
+        JobQualityResponse: {
+            /** Declared Role */
+            declared_role?: string | null;
+            /** Rankable */
+            rankable: boolean;
+            /** Status */
+            status: string;
+            /** Warnings */
+            warnings: string[];
         };
         /** JobRequirementInput */
         JobRequirementInput: {
@@ -1004,6 +1016,15 @@ export interface components {
              * Format: uuid
              */
             job_id: string;
+            /** Job Quality Status */
+            job_quality_status?: string | null;
+            /** Job Quality Warnings */
+            job_quality_warnings?: string[];
+            /**
+             * Rankable
+             * @default true
+             */
+            rankable: boolean;
             /** Ranking Score */
             ranking_score: number;
             /** Reason */

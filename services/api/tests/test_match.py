@@ -143,6 +143,12 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "blocked": False,
         "blockers": [],
     }
+    assert result["job_quality"] == {
+        "status": "OK",
+        "rankable": True,
+        "warnings": [],
+        "declared_role": None,
+    }
     assert result["matched_required"] == 1
     assert result["missing_preferred"] == 0
     assert result["unknown_requirements"] == 1
@@ -179,6 +185,7 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "confidence_aware_fit_v112_enabled",
         "confidence_adjusted_ranking_signal_v112_enabled",
         "professional_fit_range_v112_enabled",
+        "job_normalization_quality_gate_v114_enabled",
     ]
 
 
