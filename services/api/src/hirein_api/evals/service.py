@@ -101,9 +101,15 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
     jobs = {job.id: job for job in await list_jobs(session)}
 
     samples: list[RankingSample] = []
+    quality_by_job: dict[str, tuple[str | None, bool, list[str]]] = {}
     for row in evaluation_rows:
         match = await calculate_job_match(session, row.job_id)
         professional_fit = match.professional_fit
+        quality_by_job[str(row.job_id)] = (
+            match.job_quality.status if match.job_quality is not None else None,
+            match.job_quality.rankable if match.job_quality is not None else True,
+            match.job_quality.warnings if match.job_quality is not None else [],
+        )
         samples.append(
             RankingSample(
                 key=str(row.job_id),
@@ -142,6 +148,7 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
         if job is None:
             raise EvaluationJobNotFoundError("evaluated job posting not found")
         evaluation = evaluation_by_job[sample.key]
+        quality_status, rankable, quality_warnings = quality_by_job[sample.key]
         ranking.append(
             PilotEvalRankingItemResponse(
                 job_id=job_id,
@@ -153,15 +160,9 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
                 coverage=sample.coverage,
                 ranking_score=ranking_signal(sample),
                 band=sample.band,
-                job_quality_status=(
-                    match.job_quality.status if match.job_quality is not None else None
-                ),
-                rankable=(
-                    match.job_quality.rankable if match.job_quality is not None else True
-                ),
-                job_quality_warnings=(
-                    match.job_quality.warnings if match.job_quality is not None else []
-                ),
+                job_quality_status=quality_status,
+                rankable=rankable,
+                job_quality_warnings=quality_warnings,
                 blocker_real=sample.blocker_real,
                 reason=sample.reason,
                 error_category=_category(evaluation.error_category),
