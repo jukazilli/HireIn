@@ -52,6 +52,16 @@ async def build_blind_report(
                         if match.professional_fit is not None
                         else None
                     ),
+                    "job_quality": (
+                        {
+                            "status": match.job_quality.status,
+                            "rankable": match.job_quality.rankable,
+                            "warnings": match.job_quality.warnings,
+                            "declared_role": match.job_quality.declared_role,
+                        }
+                        if match.job_quality is not None
+                        else None
+                    ),
                     "matched_required": match.matched_required,
                     "missing_required": match.missing_required,
                     "matched_preferred": match.matched_preferred,
