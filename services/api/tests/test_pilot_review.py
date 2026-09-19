@@ -143,7 +143,12 @@ def test_review_round_trip_and_report_uses_professional_fit() -> None:
     assert payload["ranking"][0]["job_id"] == strong_id
     assert payload["ranking"][0]["relevance"] == 4
     assert payload["ranking"][0]["apply_intent"] == 0
+    assert payload["ranking"][0]["job_quality_status"] == "OK"
+    assert payload["ranking"][0]["rankable"] is True
+    assert payload["ranking"][0]["job_quality_warnings"] == []
     assert payload["ranking"][1]["apply_intent"] == 4
+    assert payload["ranking"][1]["job_quality_status"] == "OK"
+    assert payload["ranking"][1]["rankable"] is True
     assert payload["ranking"][1]["error_category"] == "RANKING_WEIGHT"
 
 
@@ -205,3 +210,33 @@ def test_report_requires_candidate_profile() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "primary candidate profile not found"
+
+
+def test_report_marks_title_description_role_conflict_for_review() -> None:
+    conflict_job = _job_payload(company="Empresa Inconsistente")
+    conflict_job["title"] = "Analista de Dados Pleno"
+    conflict_job["description_raw"] = (
+        "A vaga busca Analista de Sistemas Pleno para implantação e sustentação."
+    )
+
+    with TestClient(app) as client:
+        assert client.put("/api/v1/profile", json=_profile_payload()).status_code == 200
+        created = client.post("/api/v1/jobs", json=conflict_job)
+        assert created.status_code == 201
+        job_id = created.json()["id"]
+
+        assert client.put(
+            f"/api/v1/evals/jobs/{job_id}",
+            json={"relevance": 1, "apply_intent": 1},
+        ).status_code == 200
+
+        report = client.get("/api/v1/evals/report")
+
+    assert report.status_code == 200
+    item = report.json()["ranking"][0]
+    assert item["job_id"] == job_id
+    assert item["job_quality_status"] == "REVIEW"
+    assert item["rankable"] is False
+    assert item["job_quality_warnings"] == [
+        "job_title_specialization_conflicts_with_description"
+    ]
