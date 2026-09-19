@@ -58,10 +58,10 @@ def test_low_confidence_score_is_shrunk_toward_neutral_prior() -> None:
     assert ranking_signal(known_zero) == pytest.approx(0.0)
 
 
-def test_explicit_algorithm_blocker_stays_at_bottom() -> None:
+def test_opportunity_blocker_does_not_change_professional_fit_benchmark() -> None:
     blocked = RankingSample(
         "blocked",
-        relevance=0,
+        relevance=4,
         score=100,
         coverage=100,
         band="STRONG",
@@ -75,9 +75,10 @@ def test_explicit_algorithm_blocker_stays_at_bottom() -> None:
         band="INSUFFICIENT_DATA",
     )
 
+    assert ranking_signal(blocked) == pytest.approx(100.0)
     assert [sample.key for sample in rank_samples([blocked, unknown])] == [
-        "unknown",
         "blocked",
+        "unknown",
     ]
 
 

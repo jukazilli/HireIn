@@ -49,10 +49,12 @@ def validate_samples(samples: list[RankingSample]) -> None:
 
 
 def ranking_signal(sample: RankingSample) -> float:
-    """Return the same confidence-aware signal exposed by Match v1.12."""
+    """Return the Professional Fit benchmark signal.
 
-    if sample.algorithm_blocked:
-        return -1.0
+    Opportunity blockers are metadata only here. The benchmark ground truth is
+    professional capability, so location/contract/work-model blockers must not
+    alter this ranking. Product recommendation can combine dimensions later.
+    """
 
     return confidence_adjusted_score(sample.score, sample.coverage)
 
