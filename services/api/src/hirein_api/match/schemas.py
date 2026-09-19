@@ -57,6 +57,13 @@ class OpportunityCompatibilityResponse(BaseModel):
     blockers: list[PreferenceAspect]
 
 
+class JobQualityResponse(BaseModel):
+    status: str
+    rankable: bool
+    warnings: list[str]
+    declared_role: str | None = None
+
+
 class JobMatchResponse(BaseModel):
     job_id: uuid.UUID
     profile_id: uuid.UUID
@@ -71,6 +78,7 @@ class JobMatchResponse(BaseModel):
     # Explicit v1.6 dimensions.
     professional_fit: ProfessionalFitResponse | None = None
     opportunity_compatibility: OpportunityCompatibilityResponse | None = None
+    job_quality: JobQualityResponse | None = None
 
     # Kept for backward compatibility; aliases opportunity compatibility score.
     preference_score: int | None
