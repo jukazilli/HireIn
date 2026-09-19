@@ -153,6 +153,15 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
                 coverage=sample.coverage,
                 ranking_score=ranking_signal(sample),
                 band=sample.band,
+                job_quality_status=(
+                    match.job_quality.status if match.job_quality is not None else None
+                ),
+                rankable=(
+                    match.job_quality.rankable if match.job_quality is not None else True
+                ),
+                job_quality_warnings=(
+                    match.job_quality.warnings if match.job_quality is not None else []
+                ),
                 blocker_real=sample.blocker_real,
                 reason=sample.reason,
                 error_category=_category(evaluation.error_category),
