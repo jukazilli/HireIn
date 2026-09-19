@@ -159,12 +159,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         O Match só é liberado depois que a avaliação humana da vaga estiver salva. Isso protege o holdout contra
-        contaminação acidental. No v1.11, requisitos compostos preservam o contexto semântico ao serem quebrados em conceitos atômicos.
+        contaminação acidental. No v1.12, baixa cobertura deixa de parecer certeza: Fit observado, confiança e faixa possível ficam separados.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.11 com átomos semânticos.</strong>
-      Professional Fit usa evidências confirmadas; Opportunity Compatibility mede condições da vaga. Em requisitos compostos, o HireIn preserva o contexto compartilhado antes de aprender os itens confirmados.
+      <strong>Match v1.12 com confiança explícita.</strong>
+      Professional Fit continua baseado em evidências confirmadas. O sinal de ranking é ajustado pela cobertura e requisitos UNKNOWN permanecem como incerteza, não como gap.
     </aside>
   </section>
 
@@ -222,10 +222,21 @@
         <div class="match-score-panel">
           <div>
             <p class="eyebrow">Professional Fit</p>
-            <span class="match-score-value">{(result.professional_fit?.score ?? result.score) === null ? '—' : `${result.professional_fit?.score ?? result.score}%`}</span>
-            <p class="match-score-label">{bandLabel[result.professional_fit?.band ?? result.band] ?? (result.professional_fit?.band ?? result.band)}</p>
+            {#if (result.professional_fit?.band ?? result.band) === 'INSUFFICIENT_DATA'}
+              <span class="match-score-state">Aderência ainda incerta</span>
+              <p class="match-score-label">{result.professional_fit?.confidence ?? result.evaluation_coverage}% dos requisitos avaliados</p>
+            {:else}
+              <span class="match-score-value">{(result.professional_fit?.score ?? result.score) === null ? '—' : `${result.professional_fit?.score ?? result.score}%`}</span>
+              <p class="match-score-label">{bandLabel[result.professional_fit?.band ?? result.band] ?? (result.professional_fit?.band ?? result.band)}</p>
+            {/if}
           </div>
-          <small>{(result.professional_fit?.score ?? result.score) === null ? 'Sem evidência suficiente para aderência' : 'Competência profissional entre evidências avaliadas'}</small>
+          <small>
+            {#if result.professional_fit?.score_floor !== null && result.professional_fit?.score_floor !== undefined && result.professional_fit?.score_ceiling !== null && result.professional_fit?.score_ceiling !== undefined}
+              Faixa possível {result.professional_fit.score_floor}%–{result.professional_fit.score_ceiling}% · sinal de ranking {result.professional_fit.ranking_score ?? '—'}
+            {:else}
+              Sem evidência profissional suficiente para estimar uma faixa.
+            {/if}
+          </small>
         </div>
         <div class="match-summary-panel">
           <p class="section-kicker">{selectedJob.company_name}</p>
@@ -235,8 +246,19 @@
           <div class="dimension-strip">
             <div class="dimension-read">
               <span>Professional Fit</span>
-              <strong>{(result.professional_fit?.score ?? result.score) === null ? '—' : `${result.professional_fit?.score ?? result.score}%`}</strong>
-              <small>confiança {result.professional_fit?.confidence ?? result.evaluation_coverage}%</small>
+              <strong>
+                {(result.professional_fit?.band ?? result.band) === 'INSUFFICIENT_DATA'
+                  ? 'Incerto'
+                  : (result.professional_fit?.score ?? result.score) === null
+                    ? '—'
+                    : `${result.professional_fit?.score ?? result.score}%`}
+              </strong>
+              <small>
+                confiança {result.professional_fit?.confidence ?? result.evaluation_coverage}%
+                {result.professional_fit?.ranking_score !== null && result.professional_fit?.ranking_score !== undefined
+                  ? ` · ranking ${result.professional_fit.ranking_score}`
+                  : ''}
+              </small>
             </div>
             <div class="dimension-read" class:blocked={result.opportunity_compatibility?.blocked}>
               <span>Opportunity Compatibility</span>
@@ -265,7 +287,7 @@
 
           {#if (result.professional_fit?.band ?? result.band) === 'INSUFFICIENT_DATA'}
             <div class="status-notice warning insufficient-note">
-              A confiança está abaixo de 60%. A aderência exibida considera apenas as evidências que puderam ser avaliadas; os itens desconhecidos continuam explícitos e não viram gaps artificiais.
+              A confiança está abaixo de 60%. O HireIn não apresenta o Fit observado como certeza: a faixa possível mantém os UNKNOWNs explícitos e o sinal de ranking é puxado para um prior neutro de 50 até haver mais evidência.
             </div>
           {/if}
         </div>
@@ -511,6 +533,7 @@
   .selected-title { margin: .18rem 0 .35rem; font-size: clamp(1.6rem, 3vw, 2.3rem); }
   .selected-meta { margin: 0; color: var(--text-muted); font-size: .84rem; }
   .match-score-panel small { color: var(--brand-200); font-size: .74rem; }
+  .match-score-state { display: block; max-width: 240px; font-family: var(--font-display); font-size: clamp(1.7rem, 4vw, 2.8rem); line-height: .96; letter-spacing: -.04em; }
   .dimension-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: .55rem; margin-top: 1.2rem; }
   .dimension-read { display: grid; gap: .18rem; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); }
   .dimension-read > span { color: var(--text-muted); font-size: .66rem; }
