@@ -64,6 +64,9 @@ class PilotEvalRankingItemResponse(BaseModel):
     coverage: int
     ranking_score: float
     band: str
+    job_quality_status: str | None = None
+    rankable: bool = True
+    job_quality_warnings: list[str] = Field(default_factory=list)
     blocker_real: bool
     reason: str | None
     error_category: EvaluationErrorCategory | None
