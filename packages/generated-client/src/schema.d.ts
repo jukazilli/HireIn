@@ -1004,10 +1004,10 @@ export interface components {
              * Format: uuid
              */
             job_id: string;
-            /** Reason */
-            reason: string | null;
             /** Ranking Score */
             ranking_score: number;
+            /** Reason */
+            reason: string | null;
             /** Relevance */
             relevance: number;
             /** Score */
