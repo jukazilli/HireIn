@@ -62,6 +62,7 @@ class PilotEvalRankingItemResponse(BaseModel):
     apply_intent: int | None
     score: int | None
     coverage: int
+    ranking_score: float
     band: str
     blocker_real: bool
     reason: str | None

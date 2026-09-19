@@ -4,7 +4,10 @@ import math
 from dataclasses import dataclass
 from statistics import mean
 
-NEUTRAL_FIT_PRIOR = 50.0
+from hirein_api.match.confidence import (
+    NEUTRAL_FIT_PRIOR,
+    confidence_adjusted_score,
+)
 
 
 @dataclass(frozen=True)
@@ -46,19 +49,12 @@ def validate_samples(samples: list[RankingSample]) -> None:
 
 
 def ranking_signal(sample: RankingSample) -> float:
-    """Return confidence-adjusted fit without punishing missing evidence.
-
-    Low-confidence scores shrink toward a neutral 50-point prior. A missing score is
-    therefore neutral instead of automatically worse than a known 0. Explicit
-    algorithmic blockers remain at the bottom independent of evidence coverage.
-    """
+    """Return the same confidence-aware signal exposed by Match v1.12."""
 
     if sample.algorithm_blocked:
         return -1.0
 
-    fit = float(sample.score) if sample.score is not None else NEUTRAL_FIT_PRIOR
-    confidence = sample.coverage / 100
-    return (fit * confidence) + (NEUTRAL_FIT_PRIOR * (1 - confidence))
+    return confidence_adjusted_score(sample.score, sample.coverage)
 
 
 def rank_samples(samples: list[RankingSample]) -> list[RankingSample]:

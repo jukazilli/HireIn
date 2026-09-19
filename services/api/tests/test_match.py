@@ -133,6 +133,9 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "score": 100,
         "confidence": 75,
         "band": "STRONG",
+        "ranking_score": 88,
+        "score_floor": 75,
+        "score_ceiling": 100,
     }
     assert result["opportunity_compatibility"] == {
         "score": 100,
@@ -173,6 +176,9 @@ def test_match_is_weighted_explainable_and_auditable() -> None:
         "human_resolution_only_applies_to_v17_unknowns",
         "atomic_evidence_resolution_v110_enabled",
         "semantic_atomic_parser_v111_enabled",
+        "confidence_aware_fit_v112_enabled",
+        "confidence_adjusted_ranking_signal_v112_enabled",
+        "professional_fit_range_v112_enabled",
     ]
 
 

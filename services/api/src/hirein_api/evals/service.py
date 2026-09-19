@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from hirein_api.evals.domain import EvaluationErrorCategory
 from hirein_api.evals.models import PilotJobEvaluation
-from hirein_api.evals.ranking import RankingSample, calculate_ranking_metrics, rank_samples
+from hirein_api.evals.ranking import (
+    RankingSample,
+    calculate_ranking_metrics,
+    rank_samples,
+    ranking_signal,
+)
 from hirein_api.evals.repository import get_evaluation, list_evaluations
 from hirein_api.evals.schemas import (
     PilotEvalMetricsResponse,
@@ -146,6 +151,7 @@ async def build_pilot_eval_report(session: AsyncSession) -> PilotEvalReportRespo
                 apply_intent=evaluation.apply_intent,
                 score=sample.score,
                 coverage=sample.coverage,
+                ranking_score=ranking_signal(sample),
                 band=sample.band,
                 blocker_real=sample.blocker_real,
                 reason=sample.reason,

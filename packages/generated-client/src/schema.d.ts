@@ -1004,6 +1004,8 @@ export interface components {
              * Format: uuid
              */
             job_id: string;
+            /** Ranking Score */
+            ranking_score: number;
             /** Reason */
             reason: string | null;
             /** Relevance */
@@ -1110,8 +1112,14 @@ export interface components {
             band: components["schemas"]["MatchBand"];
             /** Confidence */
             confidence: number;
+            /** Ranking Score */
+            ranking_score?: number | null;
             /** Score */
             score: number | null;
+            /** Score Ceiling */
+            score_ceiling?: number | null;
+            /** Score Floor */
+            score_floor?: number | null;
         };
         /**
          * RequirementImportance
