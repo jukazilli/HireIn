@@ -159,12 +159,12 @@
       <h1 class="page-title">Não basta dizer que combina. Mostre o porquê.</h1>
       <p class="page-lead">
         O Match só é liberado depois que a avaliação humana da vaga estiver salva. Isso protege o holdout contra
-        contaminação acidental. No v1.12, baixa cobertura deixa de parecer certeza: Fit observado, confiança e faixa possível ficam separados.
+        contaminação acidental. No v1.14, além da confiança explícita, o HireIn também sinaliza quando título e descrição da vaga parecem inconsistentes.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Match v1.12 com confiança explícita.</strong>
-      Professional Fit continua baseado em evidências confirmadas. O sinal de ranking é ajustado pela cobertura e requisitos UNKNOWN permanecem como incerteza, não como gap.
+      <strong>Match v1.14 com quality gate da vaga.</strong>
+      Professional Fit continua baseado em evidências confirmadas. Vagas com conflito explícito entre título e descrição ficam marcadas para revisão antes de serem usadas em recomendação automática.
     </aside>
   </section>
 
@@ -242,6 +242,15 @@
           <p class="section-kicker">{selectedJob.company_name}</p>
           <h2 class="selected-title">{selectedJob.title}</h2>
           <p class="selected-meta">{selectedJob.location_text ?? 'Local n/d'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
+
+          {#if result.job_quality && !result.job_quality.rankable}
+            <div class="status-notice warning quality-note">
+              <strong>Vaga precisa de revisão de normalização.</strong>
+              O título e a descrição parecem apontar para papéis diferentes
+              {result.job_quality.declared_role ? ` (descrição: ${result.job_quality.declared_role})` : ''}.
+              O Professional Fit permanece visível para auditoria, mas esta vaga não deve entrar em ranking automático até a fonte ser revisada.
+            </div>
+          {/if}
 
           <div class="dimension-strip">
             <div class="dimension-read">
