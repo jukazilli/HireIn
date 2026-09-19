@@ -167,6 +167,10 @@ def assert_match_api(page: Page, job_id: str) -> None:
     assert match["professional_fit"]["score_ceiling"] is not None
     assert match["professional_fit"]["score_floor"] <= match["professional_fit"]["score_ceiling"]
     assert match["opportunity_compatibility"] is not None
+    assert match["job_quality"] is not None
+    assert match["job_quality"]["status"] == "OK"
+    assert match["job_quality"]["rankable"] is True
+    assert match["job_quality"]["warnings"] == []
     assert len(match["requirement_results"]) == 1
     assert match["requirement_results"][0]["value"] == "Gestão de Projetos"
 
