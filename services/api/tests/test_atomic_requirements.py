@@ -24,6 +24,13 @@ def test_restores_shared_suffix_for_requirement_actions() -> None:
     )
 
 
+def test_restores_shared_suffix_for_roadmap_actions() -> None:
+    assert _options("Construção e priorização de roadmap de produto") == (
+        "Construção de roadmap de produto",
+        "priorização de roadmap de produto",
+    )
+
+
 def test_restores_shared_prefix_for_adjectival_coordination() -> None:
     assert _options("Comunicação verbal e escrita") == (
         "Comunicação verbal",

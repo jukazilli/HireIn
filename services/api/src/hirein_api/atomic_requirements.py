@@ -11,6 +11,7 @@ AtomicOperator = Literal["ANY", "ALL"]
 
 _MAX_ATOMIC_OPTIONS = 8
 _MAX_WORDS_PER_ATOM = 4
+_MAX_WORDS_PER_SHARED_COMPLEMENT_ATOM = 5
 
 # Only heads with a strong, repeatable linguistic pattern are allowed to borrow
 # a complement from the next coordinated phrase. This keeps the parser
@@ -21,6 +22,7 @@ _SHARED_COMPLEMENT_HEADS = {
     "acompanhamento",
     "comunicacao",
     "controle",
+    "construcao",
     "criacao",
     "definicao",
     "desenho",
@@ -114,8 +116,11 @@ def _shared_complement(option: str) -> tuple[str, str] | None:
     return None
 
 
-def _restore_shared_complements(options: list[str]) -> list[str]:
+def _restore_shared_complements(
+    options: list[str],
+) -> tuple[list[str], set[int]]:
     repaired = list(options)
+    shared_context_indices: set[int] = set()
     for index in range(len(repaired) - 1):
         left = repaired[index]
         right = repaired[index + 1]
@@ -136,8 +141,9 @@ def _restore_shared_complements(options: list[str]) -> list[str]:
             and right_head_key in _SHARED_COMPLEMENT_HEADS
         ):
             repaired[index] = f"{left} {complement}"
+            shared_context_indices.update({index, index + 1})
 
-    return repaired
+    return repaired, shared_context_indices
 
 
 def _looks_like_short_modifier(option: str) -> bool:
@@ -194,10 +200,16 @@ def parse_atomic_requirement(
     if operator is None:
         return None
 
-    options = _restore_shared_complements(options)
+    options, shared_context_indices = _restore_shared_complements(options)
     options = _restore_shared_prefixes(options)
 
-    if any(len(option.split()) > _MAX_WORDS_PER_ATOM for option in options):
-        return None
+    for index, option in enumerate(options):
+        word_limit = (
+            _MAX_WORDS_PER_SHARED_COMPLEMENT_ATOM
+            if index in shared_context_indices
+            else _MAX_WORDS_PER_ATOM
+        )
+        if len(option.split()) > word_limit:
+            return None
 
     return AtomicRequirement(operator=operator, options=tuple(options))
