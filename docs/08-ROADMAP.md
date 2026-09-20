@@ -254,6 +254,10 @@ A representação estruturada deve ser considerada útil e confiável pelo usuá
 
 # FASE 3 — HireIn Match v1
 
+**Status: concluída — Match determinístico congelado em 20/09/2026.**  
+Baseline funcional: `07271119e05895d21e62736bb2379bb33270239a`.  
+Decisão e holdout final: `docs/34-MATCH-PHASE-3-FREEZE.md`.
+
 ## Pergunta
 
 > Conseguimos ordenar vagas aproximadamente como o próprio candidato ordenaria?
@@ -340,6 +344,8 @@ Automatizar match ruim apenas produz candidaturas ruins mais rapidamente.
 ---
 
 # FASE 4 — Application Studio
+
+**Status: próxima fase ativa após o congelamento da Fase 3.**
 
 ## Pergunta
 
