@@ -21,6 +21,7 @@ _SHARED_COMPLEMENT_HEADS = {
     "acompanhamento",
     "comunicacao",
     "controle",
+    "construcao",
     "criacao",
     "definicao",
     "desenho",
