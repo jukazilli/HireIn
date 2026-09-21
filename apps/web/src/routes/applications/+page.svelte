@@ -325,7 +325,7 @@
   .studio-workspace {
     border: 1px solid var(--border);
     border-radius: 20px;
-    background: var(--surface);
+    background: var(--bg-surface);
     overflow: hidden;
   }
   .workspace-head {
@@ -334,7 +334,7 @@
     gap: 1.2rem;
     align-items: end;
     padding: 1.5rem;
-    background: linear-gradient(180deg, var(--neutral-50), var(--surface));
+    background: linear-gradient(180deg, var(--neutral-50), var(--bg-surface));
   }
   .workspace-head h2 {
     margin: .25rem 0 .35rem;
@@ -360,7 +360,7 @@
   .workspace-copy { display: flex; gap: .85rem; align-items: flex-start; }
   .step-number {
     flex: 0 0 auto;
-    color: var(--lime-700);
+    color: var(--lime-600);
     font-family: var(--font-display);
     font-size: .72rem;
     font-weight: 760;
@@ -423,7 +423,7 @@
     background: var(--neutral-50);
   }
   .studio-next div { display: grid; gap: .2rem; }
-  .studio-next div > span { color: var(--lime-700); font-size: .68rem; font-weight: 760; text-transform: uppercase; letter-spacing: .08em; }
+  .studio-next div > span { color: var(--lime-600); font-size: .68rem; font-weight: 760; text-transform: uppercase; letter-spacing: .08em; }
   .studio-next strong { font-family: var(--font-display); font-size: .9rem; }
   .studio-next p { max-width: 720px; margin: 0; color: var(--text-secondary); font-size: .74rem; }
   .blocked-action {
@@ -432,7 +432,7 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     color: var(--text-muted);
-    background: var(--surface);
+    background: var(--bg-surface);
     font-size: .72rem;
     font-weight: 680;
   }
