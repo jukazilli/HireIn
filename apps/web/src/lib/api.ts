@@ -12,6 +12,8 @@ export type JobPosting = Schemas['JobPostingResponse'];
 export type JobPostingUpsert = Schemas['JobPostingUpsert'];
 export type JobSummary = Schemas['JobSummaryResponse'];
 export type JobMatch = Schemas['JobMatchResponse'];
+export type ApplicationDraft = Schemas['ApplicationDraftResponse'];
+export type ApplicationStatus = Schemas['ApplicationStatus'];
 export type PilotReviewJob = Schemas['PilotReviewJobResponse'];
 export type PilotEvaluation = Schemas['PilotEvaluationResponse'];
 export type PilotEvaluationUpsert = Schemas['PilotEvaluationUpsert'];
@@ -174,6 +176,19 @@ export const api = {
   replaceJob: (jobId: string, payload: JobPostingUpsert) =>
     request<JobPosting>(`/jobs/${jobId}`, jsonRequest('PUT', payload)),
   getJobMatch: (jobId: string) => request<JobMatch>(`/jobs/${jobId}/match`),
+
+  listApplications: () => request<ApplicationDraft[]>('/applications'),
+  getApplicationForJob: (jobId: string) =>
+    requestOptional<ApplicationDraft>(`/applications/jobs/${jobId}`),
+  prepareApplication: (jobId: string) =>
+    request<ApplicationDraft>(`/applications/jobs/${jobId}`, { method: 'PUT' }),
+  markApplicationReadyForReview: (applicationId: string) =>
+    request<ApplicationDraft>(`/applications/${applicationId}/ready-for-review`, {
+      method: 'POST'
+    }),
+  approveApplication: (applicationId: string) =>
+    request<ApplicationDraft>(`/applications/${applicationId}/approve`, { method: 'POST' }),
+
   getEvidenceGaps: (jobId: string) =>
     request<EvidenceGapList>(`/jobs/${jobId}/evidence-gaps`),
   upsertEvidenceResolution: (
