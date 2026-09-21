@@ -1,4 +1,4 @@
-import type { CandidateProfile, JobMatch, JobPosting } from './api';
+import type { CandidateProfile } from './api';
 
 export type ApplicationTruthCategory =
   | 'EXPERIENCE'
@@ -15,17 +15,13 @@ export type ApplicationTruthItem = {
   detail: string | null;
 };
 
-export type ApplicationEvidenceItem = {
-  requirementId: string;
-  requirement: string;
-  evidenceId: string;
-  evidence: string;
-  detail: string | null;
-};
-
 const isConfirmed = (sourceType: string) => sourceType === 'USER_CONFIRMED';
 
-function period(startDate: string | null | undefined, endDate: string | null | undefined, current = false) {
+function period(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+  current = false
+) {
   if (!startDate) return null;
   const start = startDate.slice(0, 7);
   const end = current ? 'atual' : endDate?.slice(0, 7);
@@ -108,69 +104,4 @@ export function buildTruthInventory(profile: CandidateProfile): ApplicationTruth
   }
 
   return items;
-}
-
-export function buildMatchedEvidence(match: JobMatch): ApplicationEvidenceItem[] {
-  const seen = new Set<string>();
-  const items: ApplicationEvidenceItem[] = [];
-
-  for (const requirement of match.requirement_results) {
-    if (requirement.status !== 'MATCHED') continue;
-
-    for (const evidence of requirement.evidence) {
-      if (!isConfirmed(evidence.source_type)) continue;
-      const key = `${requirement.requirement_id}:${evidence.entity_type}:${evidence.entity_id}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      items.push({
-        requirementId: requirement.requirement_id,
-        requirement: requirement.value,
-        evidenceId: `${evidence.entity_type}:${evidence.entity_id}`,
-        evidence: evidence.value,
-        detail: evidence.detail ?? null
-      });
-    }
-  }
-
-  return items;
-}
-
-export function buildApplicationBrief(job: JobPosting, match: JobMatch): string {
-  const evidence = buildMatchedEvidence(match);
-  const gaps = match.requirement_results.filter((item) => item.status === 'GAP');
-  const unknown = match.requirement_results.filter((item) => item.status === 'UNKNOWN');
-  const fit = match.professional_fit?.score ?? match.score;
-  const confidence = match.professional_fit?.confidence ?? match.evaluation_coverage;
-
-  const lines = [
-    `Vaga: ${job.title} — ${job.company_name}`,
-    `Professional Fit: ${fit === null ? 'não conclusivo' : `${fit}%`} · confiança ${confidence}%`,
-    '',
-    'Evidências USER_CONFIRMED que podem sustentar a candidatura:'
-  ];
-
-  if (evidence.length === 0) {
-    lines.push('- Nenhuma evidência confirmada encontrada para requisitos atendidos.');
-  } else {
-    for (const item of evidence) {
-      lines.push(`- ${item.requirement}: ${item.evidence}`);
-    }
-  }
-
-  if (gaps.length > 0) {
-    lines.push('', 'Gaps explícitos:');
-    for (const item of gaps) lines.push(`- ${item.value}`);
-  }
-
-  if (unknown.length > 0) {
-    lines.push('', 'Itens ainda não comprovados:');
-    for (const item of unknown) lines.push(`- ${item.value}`);
-  }
-
-  lines.push(
-    '',
-    'Regra do Studio: adaptar somente com fatos confirmados; não transformar UNKNOWN em experiência.'
-  );
-
-  return lines.join('\n');
 }
