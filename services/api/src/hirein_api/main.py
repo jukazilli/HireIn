@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 from starlette.responses import JSONResponse, Response
 
+from hirein_api.applications.routes import router as applications_router
 from hirein_api.blind_report import build_blind_report, parse_job_ids
 from hirein_api.bootstrap_jobs import BootstrapJobsError, ingest_bootstrap_jobs
 from hirein_api.db import create_engine, create_session_factory
@@ -91,7 +92,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="HireIn API",
-    version="0.6.0",
+    version="0.7.0",
     description="Core API for the HireIn single-user pilot.",
     lifespan=lifespan,
 )
@@ -136,6 +137,7 @@ async def protect_pilot_api(request: Request, call_next: CallNext) -> Response:
 
 app.include_router(profile_router)
 app.include_router(jobs_router)
+app.include_router(applications_router)
 app.include_router(evals_router)
 app.include_router(evidence_router)
 
