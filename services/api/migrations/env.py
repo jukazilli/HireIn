@@ -8,6 +8,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from hirein_api.applications import models as application_models
 from hirein_api.db import Base
 from hirein_api.evals import models as eval_models
 from hirein_api.evidence import models as evidence_models
@@ -27,7 +28,7 @@ config.set_main_option(
     ),
 )
 
-_ = (profile_models, job_models, eval_models, evidence_models)
+_ = (profile_models, job_models, eval_models, evidence_models, application_models)
 target_metadata = Base.metadata
 
 
