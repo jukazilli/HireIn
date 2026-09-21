@@ -100,6 +100,53 @@ def test_all_of_skill_requirement_stays_unknown_when_only_one_part_is_confirmed(
     assert "kanban" in result.reason.casefold()
 
 
+def test_broad_literal_evidence_cannot_prove_more_specific_domain() -> None:
+    requirement = _requirement(
+        RequirementKind.DOMAIN,
+        "ERP financeiro: GL, AP e AR",
+    )
+    baseline = _result(requirement, RequirementMatchStatus.UNKNOWN, "não confirmado")
+    index = _empty_index(
+        skills=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                name="ERP",
+                source_type="USER_CONFIRMED",
+            ),
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                name="Financeiro",
+                source_type="USER_CONFIRMED",
+            ),
+        ]
+    )
+
+    result = _match_structured_literal(requirement, baseline, index)
+
+    assert result.status == RequirementMatchStatus.UNKNOWN
+    assert not result.evidence
+
+
+def test_specific_literal_evidence_can_prove_generic_domain() -> None:
+    requirement = _requirement(RequirementKind.DOMAIN, "ERP")
+    baseline = _result(requirement, RequirementMatchStatus.UNKNOWN, "não confirmado")
+    skill_id = uuid.uuid4()
+    index = _empty_index(
+        skills=[
+            SimpleNamespace(
+                id=skill_id,
+                name="TOTVS Protheus ERP",
+                source_type="USER_CONFIRMED",
+            )
+        ]
+    )
+
+    result = _match_structured_literal(requirement, baseline, index)
+
+    assert result.status == RequirementMatchStatus.MATCHED
+    assert result.evidence[0].entity_id == skill_id
+
+
 def test_education_requirement_matches_explicit_course_alternative() -> None:
     requirement = _requirement(
         RequirementKind.EDUCATION,
