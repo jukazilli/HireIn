@@ -7,6 +7,7 @@
     { href: '/', label: 'Perfil', icon: 'profile' },
     { href: '/jobs', label: 'Vagas', icon: 'jobs' },
     { href: '/jobs/match', label: 'Match', icon: 'match' },
+    { href: '/applications', label: 'Studio', icon: 'studio' },
     { href: '/jobs/review', label: 'Revisar', icon: 'review' }
   ];
 
@@ -59,6 +60,8 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="2"/><path d="M9 7V5h6v2M4 12h16"/></svg>
           {:else if item.icon === 'match'}
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h4l2.2-5 3.4 10L16 12h4"/></svg>
+          {:else if item.icon === 'studio'}
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16H7z"/><path d="M10 8h4M10 12h4M10 16h3"/></svg>
           {:else}
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
           {/if}
@@ -122,7 +125,7 @@
       right: .55rem;
       bottom: max(.55rem, env(safe-area-inset-bottom));
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       min-height: 62px;
       padding: .35rem;
       border: 1px solid var(--border);
