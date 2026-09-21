@@ -334,7 +334,7 @@
     gap: 1.2rem;
     align-items: end;
     padding: 1.5rem;
-    background: linear-gradient(180deg, var(--neutral-50), var(--bg-surface));
+    background: var(--neutral-50);
   }
   .workspace-head h2 {
     margin: .25rem 0 .35rem;
