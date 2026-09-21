@@ -138,7 +138,9 @@ def _literal_evidence(
 
     if kind in {RequirementKind.SKILL, RequirementKind.TOOL, RequirementKind.DOMAIN}:
         for skill in index.skills:
-            if _either_contains(skill.name, term):
+            # Evidence must be at least as specific as the requirement. A broad
+            # skill such as "ERP" cannot prove "ERP financeiro: GL, AP e AR".
+            if _contains_term(skill.name, term):
                 matches.append(_evidence("SKILL", skill.id, skill.name, skill.source_type))
 
     if kind in {
@@ -167,7 +169,7 @@ def _literal_evidence(
                 continue
             if kind == RequirementKind.RESPONSIBILITY and fact_kind != FactKind.RESPONSIBILITY:
                 continue
-            if _either_contains(fact.value, term):
+            if _contains_term(fact.value, term):
                 matches.append(
                     _evidence("FACT", fact.id, fact.value, fact.source_type, fact.kind)
                 )
