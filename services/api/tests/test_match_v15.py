@@ -114,6 +114,64 @@ def test_implementation_erp_bridge_uses_confirmed_professional_evidence() -> Non
     assert result.evidence
 
 
+def test_concept_bridge_does_not_skip_compound_parenthetical_details() -> None:
+    requirement = _requirement(
+        RequirementKind.EXPERIENCE,
+        "Ciclo completo de implementação de ERP (BBP, configuração e UAT)",
+    )
+    baseline = _result(requirement, RequirementMatchStatus.UNKNOWN, "não confirmado")
+    index = _empty_index(
+        skills=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                name="Implantação de sistemas ERP",
+                years_experience=None,
+                level=None,
+                source_type="USER_CONFIRMED",
+            )
+        ],
+        experiences=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                role_title="Analista de Implantação e Suporte",
+                company_name="Empresa",
+                description="Implantação e sustentação do TOTVS Protheus.",
+                start_date=date(2023, 6, 1),
+                end_date=None,
+                source_type="USER_CONFIRMED",
+            )
+        ],
+    )
+
+    result = _match_safe_professional_concepts(requirement, baseline, index)
+
+    assert result.status == RequirementMatchStatus.UNKNOWN
+    assert not result.evidence
+
+
+def test_concept_bridge_still_accepts_simple_parenthetical_alias() -> None:
+    requirement = _requirement(
+        RequirementKind.EXPERIENCE,
+        "Implantação de sistemas (ERP)",
+    )
+    baseline = _result(requirement, RequirementMatchStatus.UNKNOWN, "não confirmado")
+    index = _empty_index(
+        skills=[
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                name="Implantação de sistemas ERP",
+                years_experience=None,
+                level=None,
+                source_type="USER_CONFIRMED",
+            )
+        ]
+    )
+
+    result = _match_safe_professional_concepts(requirement, baseline, index)
+
+    assert result.status == RequirementMatchStatus.MATCHED
+
+
 def test_concept_bridge_cannot_bypass_minimum_years() -> None:
     requirement = _requirement(
         RequirementKind.EXPERIENCE,
