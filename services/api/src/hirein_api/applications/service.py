@@ -210,6 +210,8 @@ async def prepare_application_draft(
     if profile is None:
         raise ApplicationProfileNotFoundError("primary candidate profile not found")
 
+    profile_id = profile.id
+
     job = await get_job(session, job_id)
     if job is None:
         raise ApplicationJobNotFoundError("job posting not found")
@@ -225,11 +227,11 @@ async def prepare_application_draft(
         match_snapshot=match_snapshot,
     )
 
-    application = await get_application_for_job(session, profile.id, job_id)
+    application = await get_application_for_job(session, profile_id, job_id)
     now = datetime.now(UTC)
     if application is None:
         application = ApplicationDraft(
-            profile_id=profile.id,
+            profile_id=profile_id,
             job_id=job_id,
             status=ApplicationStatus.DRAFT.value,
             brief_text=brief_text,
@@ -257,7 +259,7 @@ async def prepare_application_draft(
 
     await session.commit()
     session.expire_all()
-    stored = await get_application_for_job(session, profile.id, job_id)
+    stored = await get_application_for_job(session, profile_id, job_id)
     if stored is None:
         raise RuntimeError("application draft disappeared after commit")
     return await _to_response(session, stored)
