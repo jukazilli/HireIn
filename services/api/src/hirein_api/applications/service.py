@@ -14,13 +14,13 @@ from hirein_api.applications.repository import (
 )
 from hirein_api.applications.schemas import (
     ApplicationDraftResponse,
-    ApplicationEvidenceFact,
     ApplicationMatchSnapshot,
     ApplicationRequirementEvidence,
 )
 from hirein_api.jobs.repository import get_job
 from hirein_api.match.current import calculate_job_match
 from hirein_api.match.domain import RequirementMatchStatus
+from hirein_api.match.schemas import JobMatchResponse
 from hirein_api.profile.domain import FactSource
 from hirein_api.profile.repository import get_primary_profile
 
@@ -43,11 +43,9 @@ class ApplicationStateConflictError(Exception):
     """Raised when an application state transition is invalid."""
 
 
-def _snapshots(match: object) -> tuple[list[dict[str, object]], list[str], list[str], dict[str, object]]:
-    from hirein_api.match.schemas import JobMatchResponse
-
-    if not isinstance(match, JobMatchResponse):
-        raise TypeError("expected JobMatchResponse")
+def _snapshots(
+    match: JobMatchResponse,
+) -> tuple[list[dict[str, object]], list[str], list[str], dict[str, object]]:
 
     evidence_snapshot: list[dict[str, object]] = []
     gaps: list[str] = []
