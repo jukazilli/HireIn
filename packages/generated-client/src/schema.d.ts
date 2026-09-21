@@ -4,6 +4,75 @@
  */
 
 export interface paths {
+    "/api/v1/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Applications */
+        get: operations["read_applications_api_v1_applications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Application For Job */
+        get: operations["read_application_for_job_api_v1_applications_jobs__job_id__get"];
+        /** Upsert Application For Job */
+        put: operations["upsert_application_for_job_api_v1_applications_jobs__job_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Application */
+        post: operations["approve_application_api_v1_applications__application_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/applications/{application_id}/ready-for-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ready Application For Review */
+        post: operations["ready_application_for_review_api_v1_applications__application_id__ready_for_review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/evals/jobs": {
         parameters: {
             query?: never;
@@ -198,6 +267,95 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ApplicationDraftResponse */
+        ApplicationDraftResponse: {
+            /** Approved At */
+            approved_at: string | null;
+            /** Brief Text */
+            brief_text: string;
+            /** Company Name */
+            company_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Evidence Snapshot */
+            evidence_snapshot: components["schemas"]["ApplicationRequirementEvidence"][];
+            /** Gap Snapshot */
+            gap_snapshot: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            match_snapshot: components["schemas"]["ApplicationMatchSnapshot"];
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            status: components["schemas"]["ApplicationStatus"];
+            /** Unknown Snapshot */
+            unknown_snapshot: string[];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ApplicationEvidenceFact */
+        ApplicationEvidenceFact: {
+            /** Detail */
+            detail?: string | null;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            source_type: components["schemas"]["FactSource"];
+            /** Value */
+            value: string;
+        };
+        /** ApplicationMatchSnapshot */
+        ApplicationMatchSnapshot: {
+            /** Algorithm Version */
+            algorithm_version: string;
+            band: components["schemas"]["MatchBand"];
+            /** Confidence */
+            confidence: number;
+            /** Ranking Score */
+            ranking_score?: number | null;
+            /** Score */
+            score: number | null;
+        };
+        /** ApplicationRequirementEvidence */
+        ApplicationRequirementEvidence: {
+            /** Evidence */
+            evidence: components["schemas"]["ApplicationEvidenceFact"][];
+            importance: components["schemas"]["RequirementImportance"];
+            /** Requirement */
+            requirement: string;
+            /**
+             * Requirement Id
+             * Format: uuid
+             */
+            requirement_id: string;
+        };
+        /**
+         * ApplicationStatus
+         * @enum {string}
+         */
+        ApplicationStatus: "DRAFT" | "READY_FOR_REVIEW" | "APPROVED";
         /** CandidateFactInput */
         CandidateFactInput: {
             /**
@@ -1259,6 +1417,150 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    read_applications_api_v1_applications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDraftResponse"][];
+                };
+            };
+        };
+    };
+    read_application_for_job_api_v1_applications_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_application_for_job_api_v1_applications_jobs__job_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_application_api_v1_applications__application_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ready_application_for_review_api_v1_applications__application_id__ready_for_review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_review_jobs_api_v1_evals_jobs_get: {
         parameters: {
             query?: never;
