@@ -1,6 +1,6 @@
 # HireIn — Roadmap orientado a validação
 
-> **Status:** planejamento inicial  
+> **Status:** piloto em desenvolvimento — Fase 3 congelada; Fase 4 é o próximo marco  
 > **Estratégia:** avançar por evidência, não por calendário  
 > **Regra:** nenhuma fase existe apenas porque a anterior foi programada; ela existe quando a anterior foi validada.
 
@@ -254,6 +254,10 @@ A representação estruturada deve ser considerada útil e confiável pelo usuá
 
 # FASE 3 — HireIn Match v1
 
+## Status
+
+**CONCLUÍDA / CONGELADA.** O núcleo determinístico foi congelado na baseline `6961713ae95c874986ddc83ac3a949b5c452737a` após o holdout final documentado em `docs/34-MATCH-V1-14-FINAL-HOLDOUT-FREEZE.md`. Novas mudanças no Match exigem evidência de benchmark, não ajuste ad hoc.
+
 ## Pergunta
 
 > Conseguimos ordenar vagas aproximadamente como o próprio candidato ordenaria?
@@ -340,6 +344,10 @@ Automatizar match ruim apenas produz candidaturas ruins mais rapidamente.
 ---
 
 # FASE 4 — Application Studio
+
+## Status
+
+**PRÓXIMA FASE ATIVA.** O Match passa a ser infraestrutura estável de decisão enquanto o foco de desenvolvimento migra para preparação de candidatura com revisão humana.
 
 ## Pergunta
 
@@ -969,35 +977,29 @@ Mudanças silenciosas sem registrar contexto não são.
 
 # Próximo marco executável
 
-Com a documentação atual, o próximo passo não é criar toda a plataforma.
+Com o Match determinístico congelado, o próximo passo é a **FASE 4 — Application Studio**.
 
-É construir uma **vertical slice** mínima:
-
-```text
-1 perfil real
-     ↓
-1 vaga real
-     ↓
-normalização
-     ↓
-Match explicável
-     ↓
-currículo/respostas preparados
-     ↓
-sem Auto Apply
-```
-
-Depois ampliar para:
+A próxima vertical slice deve usar uma vaga real já avaliada e transformar o Match em preparação concreta de candidatura:
 
 ```text
-10 vagas
-↓
-30–50 vagas
-↓
-primeiro adapter supervisionado
+vaga escolhida
+     ↓
+Job Workspace
+     ↓
+Candidate Facts confirmados
+     ↓
+currículo base
+     ↓
+Resume Tailoring v1
+     ↓
+Answer Assistant
+     ↓
+revisão humana
+     ↓
+candidatura preparada
 ```
 
-Esse caminho permite testar cada hipótese antes de adicionar a próxima camada de complexidade.
+Nesta fase, `AUTO SUBMIT = OFF`. O objetivo é provar verdade, qualidade e redução do trabalho de preparação antes de iniciar o primeiro adapter supervisionado.
 
 ---
 
