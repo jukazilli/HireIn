@@ -258,6 +258,27 @@ def _is_composite_and_requirement(requirement: JobRequirement) -> bool:
     return bool(_and_options(requirement))
 
 
+def _has_compound_parenthetical_detail(requirement: JobRequirement) -> bool:
+    value = requirement.value
+    start = value.find("(")
+    while start >= 0:
+        end = value.find(")", start + 1)
+        if end < 0:
+            return False
+        detail = value[start + 1 : end]
+        canonical_detail = _canonical(detail)
+        if (
+            "," in detail
+            or ";" in detail
+            or "|" in detail
+            or " e " in f" {canonical_detail} "
+            or " ou " in f" {canonical_detail} "
+        ):
+            return True
+        start = value.find("(", end + 1)
+    return False
+
+
 def _match_safe_professional_concepts(
     requirement: JobRequirement,
     baseline: RequirementMatchResponse,
@@ -277,6 +298,11 @@ def _match_safe_professional_concepts(
     # A ponte conceitual não pode satisfazer sozinha um requisito composto "A e B".
     # Nesses casos o v1.4 continua exigindo evidência para cada componente.
     if _is_composite_and_requirement(requirement):
+        return baseline
+
+    # Generic concept bridges must not silently satisfy explicit subrequirements
+    # carried inside a compound parenthetical qualifier.
+    if _has_compound_parenthetical_detail(requirement):
         return baseline
 
     if _concept_in_requirement(requirement, "implementation") and _concept_in_requirement(
