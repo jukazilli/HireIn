@@ -6,7 +6,8 @@
     type ApplicationStatus,
     type CandidateProfile,
     type JobPosting,
-    type JobSummary
+    type JobSummary,
+    type ResumeTailoringPreview
   } from '$lib/api';
   import {
     buildTruthInventory,
@@ -24,6 +25,8 @@
   let loading = true;
   let preparing = false;
   let actionBusy = false;
+  let tailoringBusy = false;
+  let resumePreview: ResumeTailoringPreview | null = null;
   let error = '';
   let copyMessage = '';
   let actionMessage = '';
@@ -74,6 +77,7 @@
     error = '';
     copyMessage = '';
     actionMessage = '';
+    resumePreview = null;
     preparing = true;
 
     try {
@@ -129,10 +133,28 @@
       application = await api.approveApplication(application.id);
       applicationsByJob = new Map(applicationsByJob).set(selectedJob.id, application);
       actionMessage = 'Base da candidatura aprovada por você.';
+      resumePreview = null;
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível aprovar a preparação.';
     } finally {
       actionBusy = false;
+    }
+  }
+
+  async function loadResumePreview() {
+    if (!application || application.status !== 'APPROVED') return;
+    tailoringBusy = true;
+    actionMessage = '';
+    try {
+      resumePreview = await api.getResumeTailoringPreview(application.id);
+      actionMessage = 'Preview determinístico carregado. Nenhum texto foi inventado.';
+    } catch (reason) {
+      error =
+        reason instanceof Error
+          ? reason.message
+          : 'Não foi possível montar o preview de currículo.';
+    } finally {
+      tailoringBusy = false;
     }
   }
 
@@ -180,7 +202,7 @@
     <i aria-hidden="true"></i>
     <span class:selected={Boolean(application)}>2. evidências</span>
     <i aria-hidden="true"></i>
-    <span>3. tailoring</span>
+    <span class:selected={Boolean(resumePreview)}>3. tailoring</span>
     <i aria-hidden="true"></i>
     <span class:selected={application?.status === 'READY_FOR_REVIEW' || application?.status === 'APPROVED'}>4. revisão</span>
   </section>
@@ -334,6 +356,138 @@
           </div>
         </div>
       </div>
+
+      {#if application.status === 'APPROVED'}
+        <div class="workspace-section tailoring-section">
+          <div class="workspace-copy">
+            <span class="step-number">04</span>
+            <div>
+              <h3>Currículo direcionado determinístico</h3>
+              <p>
+                Antes de qualquer LLM, o HireIn consegue mostrar como o currículo muda apenas com
+                priorização de evidências aprovadas. Nenhuma frase é reescrita nesta etapa.
+              </p>
+            </div>
+          </div>
+
+          <div class="tailoring-panel">
+            {#if !resumePreview}
+              <div class="tailoring-empty">
+                <strong>A base está aprovada.</strong>
+                <p>
+                  Gere o preview para comparar a ordem original com a versão direcionada e revisar o diff.
+                </p>
+                <button
+                  class="btn btn-primary"
+                  type="button"
+                  disabled={tailoringBusy}
+                  onclick={loadResumePreview}
+                >
+                  {tailoringBusy ? 'Montando preview…' : 'Ver currículo direcionado'}
+                </button>
+              </div>
+            {:else}
+              <div class="tailoring-meta">
+                <div>
+                  <span>Sem geração</span>
+                  <strong>{resumePreview.diff.length} priorizações rastreadas</strong>
+                </div>
+                <div>
+                  <span>Fronteira factual</span>
+                  <strong>{resumePreview.allowed_evidence_ids.length} evidências aprovadas</strong>
+                </div>
+              </div>
+
+              {#if resumePreview.diff.length === 0}
+                <div class="status-notice">
+                  O currículo já estava na mesma ordem de prioridade das evidências desta vaga.
+                </div>
+              {:else}
+                <div class="resume-diff">
+                  {#each resumePreview.diff as change}
+                    <article>
+                      <span>{change.entity_type}</span>
+                      <strong>{change.label}</strong>
+                      <small>
+                        posição {change.before_index + 1} → {change.after_index + 1}
+                      </small>
+                    </article>
+                  {/each}
+                </div>
+              {/if}
+
+              <article class="resume-sheet">
+                <header>
+                  <div>
+                    <h4>{resumePreview.targeted_resume.full_name}</h4>
+                    {#if resumePreview.targeted_resume.headline}
+                      <p>{resumePreview.targeted_resume.headline}</p>
+                    {/if}
+                  </div>
+                  <span>preview estruturado</span>
+                </header>
+
+                {#if resumePreview.targeted_resume.skills.length}
+                  <section>
+                    <h5>Competências</h5>
+                    <div class="resume-tags">
+                      {#each resumePreview.targeted_resume.skills as skill}
+                        <span>{skill.name}</span>
+                      {/each}
+                    </div>
+                  </section>
+                {/if}
+
+                {#if resumePreview.targeted_resume.highlights.length}
+                  <section>
+                    <h5>Destaques</h5>
+                    <ul>
+                      {#each resumePreview.targeted_resume.highlights as claim}
+                        <li>{claim.value}</li>
+                      {/each}
+                    </ul>
+                  </section>
+                {/if}
+
+                {#if resumePreview.targeted_resume.experiences.length}
+                  <section>
+                    <h5>Experiência</h5>
+                    <div class="resume-experiences">
+                      {#each resumePreview.targeted_resume.experiences as experience}
+                        <div>
+                          <strong>{experience.role_title} · {experience.company_name}</strong>
+                          <small>
+                            {experience.start_date.slice(0, 7)} →
+                            {experience.is_current
+                              ? 'atual'
+                              : experience.end_date?.slice(0, 7) ?? 'n/d'}
+                          </small>
+                          {#if experience.claims.length}
+                            <ul>
+                              {#each experience.claims as claim}
+                                <li>{claim.value}</li>
+                              {/each}
+                            </ul>
+                          {/if}
+                        </div>
+                      {/each}
+                    </div>
+                  </section>
+                {/if}
+              </article>
+
+              <details class="guardrail-details">
+                <summary>Guardrails deste preview</summary>
+                <ul>
+                  {#each resumePreview.guardrails as guardrail}
+                    <li>{guardrail}</li>
+                  {/each}
+                </ul>
+              </details>
+            {/if}
+          </div>
+        </div>
+      {/if}
 
       <footer class="studio-next">
         <div>
@@ -528,6 +682,90 @@
     color: var(--brand-700) !important;
   }
   .action-message { color: var(--brand-700) !important; font-weight: 650; }
+
+  .tailoring-panel { min-width: 0; display: grid; gap: 1rem; }
+  .tailoring-empty {
+    display: grid;
+    gap: .45rem;
+    justify-items: start;
+    padding: 1rem;
+    border: 1px dashed var(--border-strong);
+    border-radius: 14px;
+    background: var(--neutral-50);
+  }
+  .tailoring-empty p { margin: 0 0 .35rem; color: var(--text-secondary); font-size: .78rem; }
+  .tailoring-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+  }
+  .tailoring-meta > div {
+    display: grid;
+    gap: .15rem;
+    padding: .8rem .9rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--neutral-50);
+  }
+  .tailoring-meta span { color: var(--text-muted); font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; }
+  .tailoring-meta strong { font-size: .82rem; }
+
+  .resume-diff { display: grid; gap: .55rem; }
+  .resume-diff article {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr) auto;
+    gap: .75rem;
+    align-items: center;
+    padding: .7rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .resume-diff article:last-child { border-bottom: 0; }
+  .resume-diff span { color: var(--lime-600); font-size: .66rem; font-weight: 760; }
+  .resume-diff strong { font-size: .8rem; }
+  .resume-diff small { color: var(--text-muted); font-size: .68rem; }
+
+  .resume-sheet {
+    display: grid;
+    gap: 1rem;
+    padding: 1.15rem;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg-surface);
+  }
+  .resume-sheet header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: .85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .resume-sheet h4 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; }
+  .resume-sheet header p { margin: .15rem 0 0; color: var(--text-secondary); font-size: .76rem; }
+  .resume-sheet header > span { color: var(--text-muted); font-size: .64rem; text-transform: uppercase; letter-spacing: .06em; }
+  .resume-sheet section { display: grid; gap: .45rem; }
+  .resume-sheet h5 { margin: 0; color: var(--text-muted); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; }
+  .resume-sheet ul { margin: 0; padding-left: 1.1rem; color: var(--text-secondary); font-size: .76rem; }
+  .resume-tags { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .resume-tags span {
+    padding: .28rem .5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--neutral-50);
+    font-size: .7rem;
+  }
+  .resume-experiences { display: grid; gap: .85rem; }
+  .resume-experiences > div { display: grid; gap: .2rem; }
+  .resume-experiences strong { font-size: .8rem; }
+  .resume-experiences small { color: var(--text-muted); font-size: .68rem; }
+  .guardrail-details {
+    padding-top: .75rem;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: .72rem;
+  }
+  .guardrail-details summary { cursor: pointer; color: var(--text-primary); font-weight: 680; }
+  .guardrail-details ul { margin-bottom: 0; padding-left: 1.1rem; }
+
   .empty-state.compact { min-height: auto; padding: 1rem; }
 
   @media (max-width: 760px) {
@@ -539,5 +777,8 @@
     .truth-row { grid-template-columns: 88px 1fr; }
     .studio-next { align-items: stretch; flex-direction: column; padding: 1.1rem; }
     .next-actions { flex-direction: column; align-items: stretch; }
+    .tailoring-meta { grid-template-columns: 1fr; }
+    .resume-diff article { grid-template-columns: 1fr; gap: .1rem; }
+    .resume-sheet header { flex-direction: column; }
   }
 </style>

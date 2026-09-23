@@ -14,6 +14,7 @@ export type JobSummary = Schemas['JobSummaryResponse'];
 export type JobMatch = Schemas['JobMatchResponse'];
 export type ApplicationDraft = Schemas['ApplicationDraftResponse'];
 export type ApplicationStatus = Schemas['ApplicationStatus'];
+export type ResumeTailoringPreview = Schemas['ResumeTailoringPreviewResponse'];
 export type PilotReviewJob = Schemas['PilotReviewJobResponse'];
 export type PilotEvaluation = Schemas['PilotEvaluationResponse'];
 export type PilotEvaluationUpsert = Schemas['PilotEvaluationUpsert'];
@@ -188,6 +189,8 @@ export const api = {
     }),
   approveApplication: (applicationId: string) =>
     request<ApplicationDraft>(`/applications/${applicationId}/approve`, { method: 'POST' }),
+  getResumeTailoringPreview: (applicationId: string) =>
+    request<ResumeTailoringPreview>(`/applications/${applicationId}/resume-preview`),
 
   getEvidenceGaps: (jobId: string) =>
     request<EvidenceGapList>(`/jobs/${jobId}/evidence-gaps`),

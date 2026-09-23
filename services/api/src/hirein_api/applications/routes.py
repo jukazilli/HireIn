@@ -20,6 +20,14 @@ from hirein_api.applications.service import (
 )
 from hirein_api.dependencies import get_session
 from hirein_api.match.current import MatchJobNotFoundError, MatchProfileNotFoundError
+from hirein_api.tailoring.schemas import ResumeTailoringPreviewResponse
+from hirein_api.tailoring.service import (
+    TailoringApplicationNotApprovedError,
+    TailoringApplicationNotFoundError,
+    TailoringJobNotFoundError,
+    TailoringProfileNotFoundError,
+    build_resume_tailoring_preview,
+)
 
 router = APIRouter(prefix="/api/v1/applications", tags=["applications"])
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -103,4 +111,25 @@ async def approve_application(
         raise _not_found(exc) from exc
     except ApplicationStateConflictError as exc:
         await session.rollback()
+        raise _conflict(exc) from exc
+
+
+@router.get(
+    "/{application_id}/resume-preview",
+    response_model=ResumeTailoringPreviewResponse,
+    tags=["tailoring"],
+)
+async def read_resume_tailoring_preview(
+    application_id: uuid.UUID,
+    session: SessionDep,
+) -> ResumeTailoringPreviewResponse:
+    try:
+        return await build_resume_tailoring_preview(session, application_id)
+    except (
+        TailoringApplicationNotFoundError,
+        TailoringProfileNotFoundError,
+        TailoringJobNotFoundError,
+    ) as exc:
+        raise _not_found(exc) from exc
+    except TailoringApplicationNotApprovedError as exc:
         raise _conflict(exc) from exc

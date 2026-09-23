@@ -73,6 +73,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/applications/{application_id}/resume-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Resume Tailoring Preview */
+        get: operations["read_resume_tailoring_preview_api_v1_applications__application_id__resume_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/evals/jobs": {
         parameters: {
             query?: never;
@@ -1334,6 +1351,185 @@ export interface components {
          * @enum {string}
          */
         RequirementMatchStatus: "MATCHED" | "GAP" | "UNKNOWN" | "INFO";
+        /** ResumeCertification */
+        ResumeCertification: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Issued Date */
+            issued_date?: string | null;
+            /** Issuer */
+            issuer?: string | null;
+            /** Name */
+            name: string;
+        };
+        /** ResumeClaim */
+        ResumeClaim: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            kind: components["schemas"]["FactKind"];
+            /** Value */
+            value: string;
+        };
+        /** ResumeContact */
+        ResumeContact: {
+            /** Email */
+            email?: string | null;
+            /** Github Url */
+            github_url?: string | null;
+            /** Linkedin Url */
+            linkedin_url?: string | null;
+            /** Location */
+            location?: string | null;
+            /** Phone */
+            phone?: string | null;
+            /** Portfolio Url */
+            portfolio_url?: string | null;
+        };
+        /**
+         * ResumeDiffChange
+         * @enum {string}
+         */
+        ResumeDiffChange: "PRIORITIZED";
+        /** ResumeDiffEntry */
+        ResumeDiffEntry: {
+            /** After Index */
+            after_index: number;
+            /** Before Index */
+            before_index: number;
+            change: components["schemas"]["ResumeDiffChange"];
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Entity Type */
+            entity_type: string;
+            /** Label */
+            label: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ResumeDocument */
+        ResumeDocument: {
+            /** Certifications */
+            certifications: components["schemas"]["ResumeCertification"][];
+            contact: components["schemas"]["ResumeContact"];
+            /** Education */
+            education: components["schemas"]["ResumeEducation"][];
+            /** Experiences */
+            experiences: components["schemas"]["ResumeExperience"][];
+            /** Full Name */
+            full_name: string;
+            /** Headline */
+            headline?: string | null;
+            /** Highlights */
+            highlights: components["schemas"]["ResumeClaim"][];
+            /** Languages */
+            languages: components["schemas"]["ResumeLanguage"][];
+            /** Skills */
+            skills: components["schemas"]["ResumeSkill"][];
+        };
+        /** ResumeEducation */
+        ResumeEducation: {
+            /** Course */
+            course: string;
+            /** Degree Type */
+            degree_type?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Institution */
+            institution: string;
+            /** Start Date */
+            start_date?: string | null;
+            status: components["schemas"]["EducationStatus"];
+        };
+        /** ResumeExperience */
+        ResumeExperience: {
+            /** Claims */
+            claims: components["schemas"]["ResumeClaim"][];
+            /** Company Name */
+            company_name: string;
+            /** End Date */
+            end_date: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Current */
+            is_current: boolean;
+            /** Location */
+            location?: string | null;
+            /** Role Title */
+            role_title: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+        };
+        /** ResumeLanguage */
+        ResumeLanguage: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            proficiency: components["schemas"]["LanguageProficiency"];
+        };
+        /** ResumeSkill */
+        ResumeSkill: {
+            /** Category */
+            category?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            level?: components["schemas"]["SkillLevel"] | null;
+            /** Name */
+            name: string;
+            /** Years Experience */
+            years_experience?: number | null;
+        };
+        /** ResumeTailoringPreviewResponse */
+        ResumeTailoringPreviewResponse: {
+            /** Allowed Evidence Ids */
+            allowed_evidence_ids: string[];
+            /**
+             * Application Id
+             * Format: uuid
+             */
+            application_id: string;
+            base_resume: components["schemas"]["ResumeDocument"];
+            /** Company Name */
+            company_name: string;
+            /** Diff */
+            diff: components["schemas"]["ResumeDiffEntry"][];
+            /** Guardrails */
+            guardrails: string[];
+            /**
+             * Job Id
+             * Format: uuid
+             */
+            job_id: string;
+            /** Job Title */
+            job_title: string;
+            targeted_resume: components["schemas"]["ResumeDocument"];
+        };
         /**
          * SalaryPeriod
          * @enum {string}
@@ -1548,6 +1744,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationDraftResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_resume_tailoring_preview_api_v1_applications__application_id__resume_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                application_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumeTailoringPreviewResponse"];
                 };
             };
             /** @description Validation Error */
