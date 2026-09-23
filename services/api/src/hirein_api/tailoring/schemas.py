@@ -101,5 +101,5 @@ class ResumeTailoringPreviewResponse(BaseModel):
     base_resume: ResumeDocument
     targeted_resume: ResumeDocument
     diff: list[ResumeDiffEntry]
-    allowed_claim_ids: list[uuid.UUID]
+    allowed_evidence_ids: list[uuid.UUID]
     guardrails: list[str]
