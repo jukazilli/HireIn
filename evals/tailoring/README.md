@@ -138,3 +138,35 @@ A comparação deve considerar conjuntamente:
 - política de dados do provider.
 
 A escolha final de provider/modelo exige um ADR substituindo o ADR-0006.
+
+
+## Gate de providers e fixture sintética
+
+Os candidatos públicos do primeiro benchmark estão em:
+
+```text
+evals/tailoring/providers.json
+```
+
+O arquivo é apenas um registro de benchmark. `production_default` deve permanecer `null` até existir um ADR de seleção.
+
+O prompt comum está em:
+
+```text
+evals/tailoring/prompt-v1.md
+```
+
+Antes de qualquer dado real, rode o harness com a fixture sintética:
+
+```bash
+uv run --package hirein-api python scripts/tailoring_eval.py \
+  --preview evals/tailoring/fixtures/synthetic-preview.json \
+  --candidates-dir evals/tailoring/fixtures/candidates \
+  --reviews-dir .local-data/evals/tailoring/empty-reviews \
+  --report-json .local-data/evals/tailoring/synthetic-report.json \
+  --report-md .local-data/evals/tailoring/synthetic-report.md
+```
+
+O diretório de reviews pode estar vazio. A fixture inclui propositalmente um candidato seguro e outro com evidence ID não autorizado, então o relatório deve mostrar pelo menos um `structural_pass = true` e um `structural_pass = false`.
+
+Dados reais do piloto continuam proibidos nesta etapa.
