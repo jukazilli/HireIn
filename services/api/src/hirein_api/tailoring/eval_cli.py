@@ -10,10 +10,10 @@ from pydantic import ValidationError
 
 from hirein_api.tailoring.evals import (
     HumanRewriteReview,
-    ResumeRewriteCandidate,
     ResumeRewriteEvalReport,
     evaluate_resume_rewrite,
 )
+from hirein_api.tailoring.rewrite import ResumeRewriteCandidate
 from hirein_api.tailoring.schemas import ResumeTailoringPreviewResponse
 
 DEFAULT_PREVIEW = Path(".local-data/evals/tailoring/preview.json")
