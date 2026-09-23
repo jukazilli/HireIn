@@ -49,10 +49,10 @@ def test_synthetic_fixture_exercises_safe_and_unsafe_boundaries() -> None:
         _json(FIXTURES / "synthetic-preview.json")
     )
     safe = ResumeRewriteCandidate.model_validate(
-        _json(FIXTURES / "synthetic-candidate-safe.json")
+        _json(FIXTURES / "candidates" / "synthetic-safe.json")
     )
     unsafe = ResumeRewriteCandidate.model_validate(
-        _json(FIXTURES / "synthetic-candidate-unsafe.json")
+        _json(FIXTURES / "candidates" / "synthetic-unsafe.json")
     )
 
     safe_report = evaluate_resume_rewrite(preview, safe)
