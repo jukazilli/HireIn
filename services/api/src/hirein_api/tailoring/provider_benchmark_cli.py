@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from hirein_api.tailoring.provider_benchmark_runner import (
     SyntheticBenchmarkRun,
@@ -28,7 +28,7 @@ DEFAULT_PREVIEW = Path("evals/tailoring/fixtures/synthetic-preview.json")
 DEFAULT_REPORT = Path(".local-data/evals/tailoring/synthetic-live-report.json")
 
 
-def _read_model(path: Path, model_type: type[ResumeRewriteInput] | type[ResumeTailoringPreviewResponse]):
+def _read_model[T: BaseModel](path: Path, model_type: type[T]) -> T:
     with path.open(encoding="utf-8") as handle:
         payload = json.load(handle)
     return model_type.model_validate(payload)
