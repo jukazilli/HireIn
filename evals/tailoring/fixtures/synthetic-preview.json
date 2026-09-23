@@ -1,0 +1,135 @@
+{
+  "application_id": "44444444-4444-4444-4444-444444444444",
+  "job_id": "55555555-5555-5555-5555-555555555555",
+  "company_name": "Empresa Horizonte",
+  "job_title": "Analista de Implantação",
+  "base_resume": {
+    "full_name": "Pessoa Exemplo",
+    "headline": "Analista de Sistemas",
+    "contact": {
+      "email": null,
+      "phone": null,
+      "location": "Cidade Exemplo - SC",
+      "linkedin_url": null,
+      "github_url": null,
+      "portfolio_url": null
+    },
+    "highlights": [],
+    "experiences": [
+      {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "company_name": "Empresa Sistemas",
+        "role_title": "Analista de Sistemas",
+        "start_date": "2024-01-01",
+        "end_date": null,
+        "is_current": true,
+        "location": "Cidade Exemplo - SC",
+        "claims": [
+          {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "kind": "RESPONSIBILITY",
+            "value": "Realiza levantamento de requisitos com usuários."
+          },
+          {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "kind": "RESPONSIBILITY",
+            "value": "Conduz treinamentos funcionais para usuários finais."
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "id": "77777777-7777-7777-7777-777777777777",
+        "name": "Excel",
+        "category": null,
+        "level": "INTERMEDIATE",
+        "years_experience": null
+      },
+      {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "SQL",
+        "category": null,
+        "level": "BEGINNER",
+        "years_experience": null
+      }
+    ],
+    "education": [],
+    "certifications": [],
+    "languages": []
+  },
+  "targeted_resume": {
+    "full_name": "Pessoa Exemplo",
+    "headline": "Analista de Sistemas",
+    "contact": {
+      "email": null,
+      "phone": null,
+      "location": "Cidade Exemplo - SC",
+      "linkedin_url": null,
+      "github_url": null,
+      "portfolio_url": null
+    },
+    "highlights": [],
+    "experiences": [
+      {
+        "id": "33333333-3333-3333-3333-333333333333",
+        "company_name": "Empresa Sistemas",
+        "role_title": "Analista de Sistemas",
+        "start_date": "2024-01-01",
+        "end_date": null,
+        "is_current": true,
+        "location": "Cidade Exemplo - SC",
+        "claims": [
+          {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "kind": "RESPONSIBILITY",
+            "value": "Realiza levantamento de requisitos com usuários."
+          },
+          {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "kind": "RESPONSIBILITY",
+            "value": "Conduz treinamentos funcionais para usuários finais."
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "name": "SQL",
+        "category": null,
+        "level": "BEGINNER",
+        "years_experience": null
+      },
+      {
+        "id": "77777777-7777-7777-7777-777777777777",
+        "name": "Excel",
+        "category": null,
+        "level": "INTERMEDIATE",
+        "years_experience": null
+      }
+    ],
+    "education": [],
+    "certifications": [],
+    "languages": []
+  },
+  "diff": [
+    {
+      "entity_type": "SKILL",
+      "entity_id": "11111111-1111-1111-1111-111111111111",
+      "label": "SQL",
+      "change": "PRIORITIZED",
+      "before_index": 1,
+      "after_index": 0,
+      "reason": "Evidência USER_CONFIRMED ligada a requisito MATCHED no draft aprovado."
+    }
+  ],
+  "allowed_evidence_ids": [
+    "11111111-1111-1111-1111-111111111111",
+    "22222222-2222-2222-2222-222222222222"
+  ],
+  "guardrails": [
+    "Somente dados USER_CONFIRMED entram no currículo estruturado.",
+    "UNKNOWN e GAP não são convertidos em experiência."
+  ]
+}
