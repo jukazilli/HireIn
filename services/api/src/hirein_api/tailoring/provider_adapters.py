@@ -241,3 +241,20 @@ def extract_gemini_output_text(response: dict[str, Any]) -> str:
                 parts.append(block["text"])
 
     return _require_text(parts, "gemini")
+
+
+
+def build_provider_request(
+    *,
+    provider: str,
+    model: str,
+    prompt: str,
+    payload: ResumeRewriteInput,
+) -> ProviderRequestTemplate:
+    if provider == "openai":
+        return build_openai_request(model=model, prompt=prompt, payload=payload)
+    if provider == "anthropic":
+        return build_anthropic_request(model=model, prompt=prompt, payload=payload)
+    if provider == "google":
+        return build_gemini_request(model=model, prompt=prompt, payload=payload)
+    raise ValueError(f"unsupported benchmark provider: {provider}")
