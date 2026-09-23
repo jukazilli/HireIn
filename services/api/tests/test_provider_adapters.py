@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from hirein_api.tailoring.provider_adapters import (
     build_anthropic_request,
     build_gemini_request,
@@ -200,7 +202,6 @@ def test_common_schema_requires_traceability_for_every_block() -> None:
     ]
 
 
-
 def test_provider_response_codecs_extract_only_model_text() -> None:
     model_json = json.dumps(
         {
@@ -280,8 +281,6 @@ def test_provider_response_codecs_extract_only_model_text() -> None:
 
 
 def test_provider_response_codecs_reject_missing_text() -> None:
-    import pytest
-
     with pytest.raises(ValueError, match="openai response contains no model text"):
         extract_openai_output_text({"output": []})
 
