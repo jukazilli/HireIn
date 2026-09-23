@@ -1,0 +1,15 @@
+{
+  "provider": "synthetic",
+  "model": "fixture-unsafe",
+  "prompt_version": "v1",
+  "blocks": [
+    {
+      "section": "SUMMARY",
+      "text": "Especialista em SQL avançado e arquitetura de bancos.",
+      "source_evidence_ids": [
+        "99999999-9999-9999-9999-999999999999"
+      ],
+      "target_experience_id": null
+    }
+  ]
+}
