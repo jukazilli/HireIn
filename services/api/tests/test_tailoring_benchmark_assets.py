@@ -27,7 +27,8 @@ def test_provider_registry_has_no_production_default_and_requires_paid_real_data
     assert registry.rules.tools_disabled is True
     assert registry.rules.web_grounding_disabled is True
     assert registry.rules.file_uploads_disabled is True
-    assert registry.rules.provider_caching_disabled is True
+    assert registry.rules.provider_cache_not_explicitly_enabled is True
+    assert registry.rules.provider_cache_behavior_must_be_recorded is True
     assert registry.rules.single_turn_only is True
 
     assert {(item.provider, item.model) for item in registry.candidates} == {
