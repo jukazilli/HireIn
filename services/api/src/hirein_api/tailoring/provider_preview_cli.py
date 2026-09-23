@@ -23,7 +23,7 @@ def _read_input(path: Path) -> ResumeRewriteInput:
         return ResumeRewriteInput.model_validate(json.load(handle))
 
 
-def _assert_synthetic_fixture(path: Path) -> None:
+def assert_synthetic_fixture(path: Path) -> None:
     resolved = path.resolve()
     fixture_root = SYNTHETIC_ROOT.resolve()
     if not resolved.is_relative_to(fixture_root):
@@ -39,7 +39,7 @@ def render_request_previews(
     input_path: Path,
     output_dir: Path,
 ) -> list[Path]:
-    _assert_synthetic_fixture(input_path)
+    assert_synthetic_fixture(input_path)
     registry = load_provider_benchmark_registry(registry_path)
     prompt = prompt_path.read_text(encoding="utf-8")
     payload = _read_input(input_path)
