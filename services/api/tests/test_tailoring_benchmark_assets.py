@@ -38,6 +38,7 @@ def test_provider_registry_has_no_production_default_and_requires_paid_real_data
         ("google", "gemini-3.8-flash"),
     }
     assert all(item.commercial_api_no_training_by_default for item in registry.candidates)
+    assert all(item.cache_behavior_note for item in registry.candidates)
     assert all(
         source.startswith("https://")
         for item in registry.candidates
