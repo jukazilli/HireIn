@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "verified_at": "2026-09-23",
+  "purpose": "Resume Rewriter benchmark candidates. This file is not a production routing policy.",
+  "rules": {
+    "real_data_requires_paid_commercial_api": true,
+    "free_consumer_tiers_forbidden_for_real_data": true,
+    "tools_disabled": true,
+    "web_grounding_disabled": true,
+    "file_uploads_disabled": true,
+    "provider_caching_disabled": true,
+    "single_turn_only": true,
+    "production_default": null
+  },
+  "candidates": [
+    {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "benchmark_role": "cost_baseline",
+      "input_usd_per_million_tokens": 0.10,
+      "output_usd_per_million_tokens": 0.50,
+      "structured_output": "json_schema_strict",
+      "commercial_api_no_training_by_default": true,
+      "standard_retention_note": "Abuse-monitoring logs may be retained for up to 30 days; eligible customers can use Zero Data Retention subject to endpoint/model limitations.",
+      "official_sources": [
+        "https://developers.openai.com/api/docs/models/gpt-6-luna",
+        "https://developers.openai.com/api/docs/pricing",
+        "https://platform.openai.com/docs/guides/your-data"
+      ]
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-6-sol",
+      "benchmark_role": "balanced_quality",
+      "input_usd_per_million_tokens": 2.00,
+      "output_usd_per_million_tokens": 10.00,
+      "structured_output": "json_schema_strict",
+      "commercial_api_no_training_by_default": true,
+      "standard_retention_note": "Abuse-monitoring logs may be retained for up to 30 days; eligible customers can use Zero Data Retention subject to endpoint/model limitations.",
+      "official_sources": [
+        "https://developers.openai.com/api/docs/changelog",
+        "https://developers.openai.com/api/docs/pricing",
+        "https://platform.openai.com/docs/guides/your-data"
+      ]
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "benchmark_role": "balanced_quality",
+      "input_usd_per_million_tokens": 2.00,
+      "output_usd_per_million_tokens": 10.00,
+      "structured_output": "json_schema",
+      "commercial_api_no_training_by_default": true,
+      "standard_retention_note": "Anthropic API inputs and outputs are automatically deleted within 30 days by default, subject to documented exceptions; approved customers may have Zero Data Retention arrangements.",
+      "official_sources": [
+        "https://www.anthropic.com/news/claude-sonnet-5",
+        "https://privacy.claude.com/en/articles/7996868-is-my-data-used-for-model-training",
+        "https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data"
+      ]
+    },
+    {
+      "provider": "google",
+      "model": "gemini-3.8-flash",
+      "benchmark_role": "cost_quality_alternative",
+      "input_usd_per_million_tokens": 0.75,
+      "output_usd_per_million_tokens": 3.75,
+      "price_valid_through": "2026-12-31",
+      "structured_output": "json_schema",
+      "commercial_api_no_training_by_default": true,
+      "standard_retention_note": "Paid Services are not used to improve Google products, but prompts and responses may be logged for a limited period for abuse monitoring; achieving ZDR requires the documented configuration and feature restrictions.",
+      "official_sources": [
+        "https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash",
+        "https://ai.google.dev/gemini-api/docs/pricing",
+        "https://ai.google.dev/gemini-api/docs/zdr"
+      ]
+    }
+  ]
+}
