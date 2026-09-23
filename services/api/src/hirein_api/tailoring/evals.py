@@ -8,8 +8,8 @@ from collections import Counter
 from pydantic import BaseModel, Field
 
 from hirein_api.tailoring.rewrite import (
-    ResumeRewriteCandidate,
     ResumeRewriteBlock,
+    ResumeRewriteCandidate,
     RewriteSection,
 )
 from hirein_api.tailoring.schemas import ResumeDocument, ResumeTailoringPreviewResponse
