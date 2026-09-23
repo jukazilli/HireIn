@@ -7,6 +7,9 @@ from hirein_api.tailoring.provider_adapters import (
     build_anthropic_request,
     build_gemini_request,
     build_openai_request,
+    extract_anthropic_output_text,
+    extract_gemini_output_text,
+    extract_openai_output_text,
     parse_provider_output,
     resume_rewrite_output_schema,
 )
@@ -195,3 +198,95 @@ def test_common_schema_requires_traceability_for_every_block() -> None:
         "string",
         "null",
     ]
+
+
+
+def test_provider_response_codecs_extract_only_model_text() -> None:
+    model_json = json.dumps(
+        {
+            "blocks": [
+                {
+                    "section": "HIGHLIGHT",
+                    "text": "Levantamento de requisitos com usuários.",
+                    "source_evidence_ids": [
+                        "22222222-2222-2222-2222-222222222222"
+                    ],
+                    "target_experience_id": None,
+                }
+            ]
+        }
+    )
+
+    openai_text = extract_openai_output_text(
+        {
+            "output": [
+                {"type": "reasoning", "summary": []},
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": model_json,
+                            "annotations": [],
+                        }
+                    ],
+                },
+            ]
+        }
+    )
+    anthropic_text = extract_anthropic_output_text(
+        {
+            "content": [
+                {
+                    "type": "text",
+                    "text": model_json,
+                }
+            ]
+        }
+    )
+    gemini_text = extract_gemini_output_text(
+        {
+            "steps": [
+                {
+                    "type": "model_output",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": model_json,
+                        }
+                    ],
+                }
+            ]
+        }
+    )
+
+    assert openai_text == model_json
+    assert anthropic_text == model_json
+    assert gemini_text == model_json
+
+    for provider, model, raw in [
+        ("openai", "gpt-6-luna", openai_text),
+        ("anthropic", "claude-sonnet-5", anthropic_text),
+        ("google", "gemini-3.8-flash", gemini_text),
+    ]:
+        candidate = parse_provider_output(
+            raw_json=raw,
+            provider=provider,
+            model=model,
+            prompt_version="v2",
+        )
+        assert candidate.blocks[0].text == "Levantamento de requisitos com usuários."
+
+
+def test_provider_response_codecs_reject_missing_text() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="openai response contains no model text"):
+        extract_openai_output_text({"output": []})
+
+    with pytest.raises(ValueError, match="anthropic response contains no model text"):
+        extract_anthropic_output_text({"content": []})
+
+    with pytest.raises(ValueError, match="gemini response contains no model text"):
+        extract_gemini_output_text({"steps": []})
