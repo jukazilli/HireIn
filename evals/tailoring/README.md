@@ -170,3 +170,20 @@ uv run --package hirein-api python scripts/tailoring_eval.py \
 O diretório de reviews pode estar vazio. A fixture inclui propositalmente um candidato seguro e outro com evidence ID não autorizado, então o relatório deve mostrar pelo menos um `structural_pass = true` e um `structural_pass = false`.
 
 Dados reais do piloto continuam proibidos nesta etapa.
+
+
+## Provider request dry-run
+
+A slice 4.6 permite inspecionar exatamente os requests sintéticos que seriam enviados a cada provider, sem executar rede:
+
+```bash
+uv run --package hirein-api python scripts/provider_request_preview.py
+```
+
+Os previews são gravados em:
+
+```text
+.local-data/evals/tailoring/provider-requests/
+```
+
+O script usa `prompt-v2.md` e aceita somente entradas commitadas sob `evals/tailoring/fixtures/`. Ele não carrega API keys e não possui transporte HTTP.
