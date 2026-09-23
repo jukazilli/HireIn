@@ -1,27 +1,32 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { api, type CandidateProfile, type JobMatch, type JobPosting, type JobSummary } from '$lib/api';
   import {
-    buildApplicationBrief,
-    buildMatchedEvidence,
+    api,
+    type ApplicationDraft,
+    type ApplicationStatus,
+    type CandidateProfile,
+    type JobPosting,
+    type JobSummary
+  } from '$lib/api';
+  import {
     buildTruthInventory,
-    type ApplicationEvidenceItem,
     type ApplicationTruthItem
   } from '$lib/application-studio';
 
   let profile: CandidateProfile | null = null;
   let jobs: JobSummary[] = [];
   let reviewedJobIds = new Set<string>();
+  let applicationsByJob = new Map<string, ApplicationDraft>();
   let selectedSummary: JobSummary | null = null;
   let selectedJob: JobPosting | null = null;
-  let match: JobMatch | null = null;
+  let application: ApplicationDraft | null = null;
   let truthInventory: ApplicationTruthItem[] = [];
-  let matchedEvidence: ApplicationEvidenceItem[] = [];
-  let brief = '';
   let loading = true;
   let preparing = false;
+  let actionBusy = false;
   let error = '';
   let copyMessage = '';
+  let actionMessage = '';
 
   const categoryLabel: Record<ApplicationTruthItem['category'], string> = {
     EXPERIENCE: 'Experiência',
@@ -32,19 +37,28 @@
     LANGUAGE: 'Idioma'
   };
 
+  const statusLabel: Record<ApplicationStatus, string> = {
+    DRAFT: 'Em preparação',
+    READY_FOR_REVIEW: 'Pronto para revisão',
+    APPROVED: 'Base aprovada'
+  };
+
   async function load() {
     try {
-      const [loadedProfile, jobRows, reviewRows] = await Promise.all([
-        api.getProfile(),
-        api.listJobs(),
-        api.listReviewJobs()
-      ]);
+      const loadedProfile = await api.getProfile();
       profile = loadedProfile;
+      truthInventory = profile ? buildTruthInventory(profile) : [];
+
+      const [jobRows, reviewRows, preparedRows] = await Promise.all([
+        api.listJobs(),
+        api.listReviewJobs(),
+        profile ? api.listApplications() : Promise.resolve([])
+      ]);
       jobs = jobRows;
       reviewedJobIds = new Set(
         reviewRows.filter((job) => job.evaluation).map((job) => job.job_id)
       );
-      truthInventory = profile ? buildTruthInventory(profile) : [];
+      applicationsByJob = new Map(preparedRows.map((row) => [row.job_id, row]));
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível abrir o Application Studio.';
     } finally {
@@ -52,24 +66,24 @@
     }
   }
 
-  async function prepare(job: JobSummary) {
+  async function openJob(job: JobSummary) {
     if (!reviewedJobIds.has(job.id)) return;
     selectedSummary = job;
     selectedJob = null;
-    match = null;
-    matchedEvidence = [];
-    brief = '';
+    application = null;
     error = '';
     copyMessage = '';
+    actionMessage = '';
     preparing = true;
 
     try {
-      [selectedJob, match] = await Promise.all([
+      const [loadedJob, stored] = await Promise.all([
         api.getJob(job.id),
-        api.getJobMatch(job.id)
+        api.getApplicationForJob(job.id)
       ]);
-      matchedEvidence = buildMatchedEvidence(match);
-      brief = buildApplicationBrief(selectedJob, match);
+      selectedJob = loadedJob;
+      application = stored ?? (await api.prepareApplication(job.id));
+      applicationsByJob = new Map(applicationsByJob).set(job.id, application);
     } catch (reason) {
       error = reason instanceof Error ? reason.message : 'Não foi possível preparar esta candidatura.';
     } finally {
@@ -77,10 +91,55 @@
     }
   }
 
-  async function copyBrief() {
-    if (!brief) return;
+  async function refreshDraft() {
+    if (!selectedJob || application?.status !== 'DRAFT') return;
+    actionBusy = true;
+    actionMessage = '';
     try {
-      await navigator.clipboard.writeText(brief);
+      application = await api.prepareApplication(selectedJob.id);
+      applicationsByJob = new Map(applicationsByJob).set(selectedJob.id, application);
+      actionMessage = 'Snapshot atualizado com o perfil e o Match atuais.';
+    } catch (reason) {
+      error = reason instanceof Error ? reason.message : 'Não foi possível atualizar o draft.';
+    } finally {
+      actionBusy = false;
+    }
+  }
+
+  async function markReady() {
+    if (!selectedJob || !application || application.status !== 'DRAFT') return;
+    actionBusy = true;
+    actionMessage = '';
+    try {
+      application = await api.markApplicationReadyForReview(application.id);
+      applicationsByJob = new Map(applicationsByJob).set(selectedJob.id, application);
+      actionMessage = 'A base foi congelada e está pronta para sua revisão final.';
+    } catch (reason) {
+      error = reason instanceof Error ? reason.message : 'Não foi possível avançar a revisão.';
+    } finally {
+      actionBusy = false;
+    }
+  }
+
+  async function approve() {
+    if (!selectedJob || !application || application.status !== 'READY_FOR_REVIEW') return;
+    actionBusy = true;
+    actionMessage = '';
+    try {
+      application = await api.approveApplication(application.id);
+      applicationsByJob = new Map(applicationsByJob).set(selectedJob.id, application);
+      actionMessage = 'Base da candidatura aprovada por você.';
+    } catch (reason) {
+      error = reason instanceof Error ? reason.message : 'Não foi possível aprovar a preparação.';
+    } finally {
+      actionBusy = false;
+    }
+  }
+
+  async function copyBrief() {
+    if (!application?.brief_text) return;
+    try {
+      await navigator.clipboard.writeText(application.brief_text);
       copyMessage = 'Briefing copiado.';
     } catch {
       copyMessage = 'Não foi possível copiar automaticamente.';
@@ -104,14 +163,13 @@
       <p class="eyebrow">Application Studio</p>
       <h1 class="page-title">Prepare a candidatura sem inventar uma versão sua.</h1>
       <p class="page-lead">
-        O Studio reúne vaga, Match e fatos confirmados em um único lugar. Nesta primeira slice ele não reescreve seu currículo:
-        primeiro torna explícito o que pode — e o que não pode — sustentar uma candidatura.
+        O Studio reúne vaga, Match e fatos confirmados em um draft auditável. O snapshot só usa evidências
+        confirmadas e precisa passar por revisão humana antes de ser aprovado.
       </p>
     </div>
     <aside class="context-note">
-      <strong>Fase 4 começou com uma fronteira de verdade.</strong>
-      Só evidências <code>USER_CONFIRMED</code> entram no briefing. Itens desconhecidos continuam desconhecidos.
-      AUTO SUBMIT permanece desligado.
+      <strong>A fronteira de verdade agora é persistida.</strong>
+      O draft guarda as evidências usadas naquele momento. UNKNOWN continua UNKNOWN e AUTO SUBMIT permanece desligado.
     </aside>
   </section>
 
@@ -120,11 +178,11 @@
   <section class="studio-flow" aria-label="Fluxo do Application Studio">
     <span class="active">1. oportunidade</span>
     <i aria-hidden="true"></i>
-    <span class:selected={Boolean(selectedJob)}>2. evidências</span>
+    <span class:selected={Boolean(application)}>2. evidências</span>
     <i aria-hidden="true"></i>
     <span>3. tailoring</span>
     <i aria-hidden="true"></i>
-    <span>4. revisão</span>
+    <span class:selected={application?.status === 'READY_FOR_REVIEW' || application?.status === 'APPROVED'}>4. revisão</span>
   </section>
 
   <section class="surface surface-padded">
@@ -133,7 +191,7 @@
         <p class="section-kicker">Escolha a candidatura</p>
         <h2 class="section-title">Comece por uma vaga que você já avaliou.</h2>
         <p class="section-description">
-          O Studio respeita o mesmo gate cego do Match. Vagas sem avaliação humana continuam fora deste fluxo.
+          O Studio respeita o gate cego do piloto. A preparação fica associada à vaga e não cria drafts duplicados.
         </p>
       </div>
       <span class="section-meta">{jobs.filter((job) => reviewedJobIds.has(job.id)).length} disponíveis</span>
@@ -146,47 +204,58 @@
     {:else}
       <div class="studio-job-list">
         {#each jobs.filter((job) => reviewedJobIds.has(job.id)) as job}
+          {@const stored = applicationsByJob.get(job.id)}
           <button
             class="studio-job"
             class:selected={selectedSummary?.id === job.id}
             type="button"
             disabled={preparing}
-            onclick={() => prepare(job)}
+            onclick={() => openJob(job)}
           >
             <span>
               <small>{job.company_name}</small>
               <strong>{job.title}</strong>
               <em>{job.location_text ?? 'Local não informado'} · {job.work_model ?? 'modalidade n/d'}</em>
             </span>
-            <b>{preparing && selectedSummary?.id === job.id ? 'Preparando…' : 'Preparar'}</b>
+            <b>
+              {preparing && selectedSummary?.id === job.id
+                ? 'Abrindo…'
+                : stored
+                  ? statusLabel[stored.status]
+                  : 'Preparar'}
+            </b>
           </button>
         {/each}
       </div>
     {/if}
   </section>
 
-  {#if selectedJob && match}
+  {#if selectedJob && application}
     <section class="studio-workspace" aria-live="polite">
       <header class="workspace-head">
         <div>
           <p class="section-kicker">{selectedJob.company_name}</p>
           <h2>{selectedJob.title}</h2>
-          <p>{selectedJob.location_text ?? 'Local não informado'} · {selectedJob.work_model ?? 'modalidade n/d'} · {selectedJob.contract_type ?? 'contrato n/d'}</p>
+          <p>
+            {selectedJob.location_text ?? 'Local não informado'} ·
+            {selectedJob.work_model ?? 'modalidade n/d'} ·
+            {selectedJob.contract_type ?? 'contrato n/d'}
+          </p>
         </div>
         <div class="fit-read">
           <span>Professional Fit</span>
           <strong>
-            {(match.professional_fit?.band ?? match.band) === 'INSUFFICIENT_DATA'
+            {application.match_snapshot.band === 'INSUFFICIENT_DATA'
               ? 'Incerto'
-              : `${match.professional_fit?.score ?? match.score ?? '—'}%`}
+              : `${application.match_snapshot.score ?? '—'}%`}
           </strong>
-          <small>{match.professional_fit?.confidence ?? match.evaluation_coverage}% de confiança</small>
+          <small>{application.match_snapshot.confidence}% de confiança · {statusLabel[application.status]}</small>
         </div>
       </header>
 
-      {#if (match.professional_fit?.band ?? match.band) === 'INSUFFICIENT_DATA'}
+      {#if application.match_snapshot.band === 'INSUFFICIENT_DATA'}
         <div class="status-notice warning">
-          Esta vaga ainda tem evidência insuficiente. O Studio mostra o que já é seguro usar, mas o próximo passo recomendado é resolver os UNKNOWNs no Match antes de qualquer tailoring.
+          Esta vaga ainda tem evidência insuficiente. O draft preserva o que já é seguro usar, mas os UNKNOWNs continuam explícitos.
         </div>
       {/if}
 
@@ -194,22 +263,24 @@
         <div class="workspace-copy">
           <span class="step-number">01</span>
           <div>
-            <h3>Evidências que sustentam esta vaga</h3>
+            <h3>Evidências congeladas neste draft</h3>
             <p>
-              São apenas evidências de requisitos atendidos cuja origem está confirmada por você. Nenhuma inferência entra aqui.
+              Este snapshot pertence à preparação salva. Refresh é permitido somente enquanto o estado ainda é DRAFT.
             </p>
           </div>
         </div>
 
-        {#if matchedEvidence.length === 0}
+        {#if application.evidence_snapshot.length === 0}
           <div class="empty-state compact">Nenhuma evidência confirmada foi ligada a requisitos atendidos.</div>
         {:else}
           <div class="evidence-lines">
-            {#each matchedEvidence as item}
+            {#each application.evidence_snapshot as requirement}
               <article>
-                <span>{item.requirement}</span>
-                <strong>{item.evidence}</strong>
-                {#if item.detail}<small>{item.detail}</small>{/if}
+                <span>{requirement.requirement}</span>
+                {#each requirement.evidence as evidence}
+                  <strong>{evidence.value}</strong>
+                  {#if evidence.detail}<small>{evidence.detail}</small>{/if}
+                {/each}
               </article>
             {/each}
           </div>
@@ -220,9 +291,9 @@
         <div class="workspace-copy">
           <span class="step-number">02</span>
           <div>
-            <h3>Fonte de verdade profissional</h3>
+            <h3>Fonte de verdade profissional atual</h3>
             <p>
-              Este inventário vem do Candidate Core e serve como limite do que um futuro rewriter poderá afirmar.
+              Este inventário mostra o Candidate Core de hoje. O draft acima continua com seu snapshot próprio para auditoria.
             </p>
           </div>
         </div>
@@ -248,15 +319,15 @@
         <div class="workspace-copy">
           <span class="step-number">03</span>
           <div>
-            <h3>Briefing seguro da candidatura</h3>
+            <h3>Briefing persistido da candidatura</h3>
             <p>
-              Um artefato determinístico para a próxima slice de tailoring: o que destacar, quais gaps respeitar e o que continua sem comprovação.
+              Ele registra o que pode ser destacado, quais gaps devem ser respeitados e o que ainda não foi comprovado.
             </p>
           </div>
         </div>
 
         <div class="brief-panel">
-          <pre>{brief}</pre>
+          <pre>{application.brief_text}</pre>
           <div class="brief-actions">
             <button class="btn btn-primary" type="button" onclick={copyBrief}>Copiar briefing</button>
             <span aria-live="polite">{copyMessage}</span>
@@ -266,13 +337,36 @@
 
       <footer class="studio-next">
         <div>
-          <span>Próxima slice</span>
-          <strong>Currículo direcionado + diff + aprovação humana persistida</strong>
-          <p>
-            O rewriter só poderá reorganizar, resumir, destacar e adaptar vocabulário dentro desta fronteira de verdade.
-          </p>
+          <span>{statusLabel[application.status]}</span>
+          {#if application.status === 'DRAFT'}
+            <strong>Confira a base antes de congelá-la para revisão.</strong>
+            <p>Você ainda pode atualizar o snapshot caso tenha confirmado novas evidências no perfil.</p>
+          {:else if application.status === 'READY_FOR_REVIEW'}
+            <strong>O snapshot está congelado. A decisão de aprovação é sua.</strong>
+            <p>Aprovar não envia candidatura; apenas registra a revisão humana desta base.</p>
+          {:else}
+            <strong>Base aprovada para a próxima etapa de tailoring.</strong>
+            <p>A aprovação ficou registrada. Nenhuma candidatura foi enviada externamente.</p>
+          {/if}
+          {#if actionMessage}<p class="action-message" aria-live="polite">{actionMessage}</p>{/if}
         </div>
-        <span class="blocked-action" aria-disabled="true">Tailoring ainda bloqueado</span>
+
+        <div class="next-actions">
+          {#if application.status === 'DRAFT'}
+            <button class="btn btn-secondary" type="button" disabled={actionBusy} onclick={refreshDraft}>
+              Atualizar snapshot
+            </button>
+            <button class="btn btn-primary" type="button" disabled={actionBusy} onclick={markReady}>
+              Pronto para revisão
+            </button>
+          {:else if application.status === 'READY_FOR_REVIEW'}
+            <button class="btn btn-primary" type="button" disabled={actionBusy} onclick={approve}>
+              Aprovar base
+            </button>
+          {:else}
+            <span class="approved-state">Revisão humana registrada</span>
+          {/if}
+        </div>
       </footer>
     </section>
   {/if}
@@ -280,7 +374,6 @@
 
 <style>
   .studio-page { display: grid; gap: 1.2rem; }
-  .studio-intro code { font-size: .72rem; }
 
   .studio-flow {
     display: flex;
@@ -422,21 +515,19 @@
     border-top: 1px solid var(--border);
     background: var(--neutral-50);
   }
-  .studio-next div { display: grid; gap: .2rem; }
+  .studio-next > div:first-child { display: grid; gap: .2rem; }
   .studio-next div > span { color: var(--lime-600); font-size: .68rem; font-weight: 760; text-transform: uppercase; letter-spacing: .08em; }
   .studio-next strong { font-family: var(--font-display); font-size: .9rem; }
   .studio-next p { max-width: 720px; margin: 0; color: var(--text-secondary); font-size: .74rem; }
-  .blocked-action {
-    flex: 0 0 auto;
+  .next-actions { display: flex; flex: 0 0 auto; gap: .55rem; align-items: center; }
+  .approved-state {
     padding: .6rem .75rem;
     border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-muted);
     background: var(--bg-surface);
-    font-size: .72rem;
-    font-weight: 680;
+    color: var(--brand-700) !important;
   }
-
+  .action-message { color: var(--brand-700) !important; font-weight: 650; }
   .empty-state.compact { min-height: auto; padding: 1rem; }
 
   @media (max-width: 760px) {
@@ -447,6 +538,6 @@
     .workspace-section { grid-template-columns: 1fr; gap: 1rem; padding: 1.1rem; }
     .truth-row { grid-template-columns: 88px 1fr; }
     .studio-next { align-items: stretch; flex-direction: column; padding: 1.1rem; }
-    .blocked-action { text-align: center; }
+    .next-actions { flex-direction: column; align-items: stretch; }
   }
 </style>
