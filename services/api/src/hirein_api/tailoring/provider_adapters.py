@@ -170,3 +170,74 @@ def build_gemini_request(
             },
         },
     )
+
+
+
+def _require_text(parts: list[str], provider: str) -> str:
+    text = "".join(parts).strip()
+    if not text:
+        raise ValueError(f"{provider} response contains no model text")
+    return text
+
+
+def extract_openai_output_text(response: dict[str, Any]) -> str:
+    parts: list[str] = []
+    output = response.get("output")
+    if not isinstance(output, list):
+        raise ValueError("openai response output must be a list")
+
+    for item in output:
+        if not isinstance(item, dict) or item.get("type") != "message":
+            continue
+        content = item.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "output_text"
+                and isinstance(block.get("text"), str)
+            ):
+                parts.append(block["text"])
+
+    return _require_text(parts, "openai")
+
+
+def extract_anthropic_output_text(response: dict[str, Any]) -> str:
+    parts: list[str] = []
+    content = response.get("content")
+    if not isinstance(content, list):
+        raise ValueError("anthropic response content must be a list")
+
+    for block in content:
+        if (
+            isinstance(block, dict)
+            and block.get("type") == "text"
+            and isinstance(block.get("text"), str)
+        ):
+            parts.append(block["text"])
+
+    return _require_text(parts, "anthropic")
+
+
+def extract_gemini_output_text(response: dict[str, Any]) -> str:
+    parts: list[str] = []
+    steps = response.get("steps")
+    if not isinstance(steps, list):
+        raise ValueError("gemini response steps must be a list")
+
+    for step in steps:
+        if not isinstance(step, dict) or step.get("type") != "model_output":
+            continue
+        content = step.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if (
+                isinstance(block, dict)
+                and block.get("type") == "text"
+                and isinstance(block.get("text"), str)
+            ):
+                parts.append(block["text"])
+
+    return _require_text(parts, "gemini")
