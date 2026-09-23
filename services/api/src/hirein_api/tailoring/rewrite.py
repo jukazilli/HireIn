@@ -34,7 +34,7 @@ class ResumeRewriteBlock(BaseModel):
     target_experience_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
-    def validate_target(self) -> "ResumeRewriteBlock":
+    def validate_target(self) -> ResumeRewriteBlock:
         if (
             self.section == RewriteSection.EXPERIENCE_BULLET
             and self.target_experience_id is None
