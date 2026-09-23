@@ -29,6 +29,7 @@ class ProviderBenchmarkCandidate(BaseModel):
     structured_output: str = Field(min_length=1, max_length=80)
     commercial_api_no_training_by_default: bool
     standard_retention_note: str = Field(min_length=1, max_length=1000)
+    cache_behavior_note: str = Field(min_length=1, max_length=1000)
     official_sources: list[str] = Field(min_length=1)
 
 
