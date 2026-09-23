@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable, Sequence
-from typing import TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,8 +31,6 @@ from hirein_api.tailoring.schemas import (
     ResumeSkill,
     ResumeTailoringPreviewResponse,
 )
-
-T = TypeVar("T")
 
 
 class TailoringApplicationNotFoundError(Exception):
@@ -84,7 +81,7 @@ def _matched_ids(
     return matched
 
 
-def _prioritize(
+def _prioritize[T](
     items: Sequence[T],
     matched_ids: set[uuid.UUID],
     id_getter: Callable[[T], uuid.UUID],
@@ -258,7 +255,7 @@ def _targeted_resume(
     )
 
 
-def _section_diff(
+def _section_diff[T](
     *,
     entity_type: str,
     base: Sequence[T],
@@ -397,6 +394,9 @@ async def build_resume_tailoring_preview(
             "Experiências permanecem em ordem cronológica.",
             "Evidências ligadas a requisitos MATCHED podem apenas ganhar prioridade.",
             "UNKNOWN e GAP não são convertidos em experiência.",
-            "O resumo profissional livre não é reutilizado nesta etapa porque não possui provenance por claim.",
+            (
+                "O resumo profissional livre não é reutilizado nesta etapa porque "
+                "não possui provenance por claim."
+            ),
         ],
     )
