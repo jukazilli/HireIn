@@ -3,11 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
 from hirein_api.tailoring.provider_benchmark_runner import (
+    JsonTransport,
     SyntheticBenchmarkRun,
     UrllibJsonTransport,
     load_provider_secret,
@@ -57,6 +59,8 @@ def run_live_synthetic_benchmark(
     preview_path: Path,
     report_path: Path,
     requested_candidates: list[str],
+    transport: JsonTransport | None = None,
+    secret_loader: Callable[[str], str] = load_provider_secret,
 ) -> list[SyntheticBenchmarkRun]:
     assert_synthetic_fixture(input_path)
     assert_synthetic_fixture(preview_path)
@@ -66,11 +70,11 @@ def run_live_synthetic_benchmark(
     prompt = prompt_path.read_text(encoding="utf-8")
     payload = _read_model(input_path, ResumeRewriteInput)
     preview = _read_model(preview_path, ResumeTailoringPreviewResponse)
-    transport = UrllibJsonTransport()
+    active_transport = transport or UrllibJsonTransport()
 
     runs: list[SyntheticBenchmarkRun] = []
     for candidate in selected:
-        secret = load_provider_secret(candidate.provider)
+        secret = secret_loader(candidate.provider)
         run = run_synthetic_benchmark_candidate(
             candidate=candidate,
             prompt=prompt,
@@ -78,7 +82,7 @@ def run_live_synthetic_benchmark(
             payload=payload,
             preview=preview,
             secret=secret,
-            transport=transport,
+            transport=active_transport,
         )
         runs.append(run)
         print(
