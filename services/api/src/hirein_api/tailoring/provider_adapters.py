@@ -104,7 +104,6 @@ def build_openai_request(
             "instructions": prompt,
             "input": serialize_rewrite_input(payload),
             "store": False,
-            "tools": [],
             "text": {
                 "format": {
                     "type": "json_schema",
@@ -138,7 +137,6 @@ def build_anthropic_request(
                     "content": serialize_rewrite_input(payload),
                 }
             ],
-            "tools": [],
             "output_config": {
                 "format": {
                     "type": "json_schema",
@@ -165,7 +163,6 @@ def build_gemini_request(
             "input": serialize_rewrite_input(payload),
             "system_instruction": prompt,
             "store": False,
-            "tools": [],
             "response_format": {
                 "type": "text",
                 "mime_type": "application/json",
