@@ -8,7 +8,8 @@
     "tools_disabled": true,
     "web_grounding_disabled": true,
     "file_uploads_disabled": true,
-    "provider_caching_disabled": true,
+    "provider_cache_not_explicitly_enabled": true,
+    "provider_cache_behavior_must_be_recorded": true,
     "single_turn_only": true,
     "production_default": null
   },
