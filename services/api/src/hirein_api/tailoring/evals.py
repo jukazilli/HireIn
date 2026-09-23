@@ -99,22 +99,28 @@ def _tokens(value: str) -> set[str]:
 def _document_evidence(document: ResumeDocument) -> dict[uuid.UUID, str]:
     evidence: dict[uuid.UUID, str] = {}
 
-    for item in document.highlights:
-        evidence[item.id] = item.value
-    for item in document.skills:
-        evidence[item.id] = item.name
-    for item in document.education:
-        evidence[item.id] = " ".join(
+    for highlight in document.highlights:
+        evidence[highlight.id] = highlight.value
+    for skill in document.skills:
+        evidence[skill.id] = skill.name
+    for education in document.education:
+        evidence[education.id] = " ".join(
             value
-            for value in [item.course, item.degree_type, item.institution]
+            for value in [
+                education.course,
+                education.degree_type,
+                education.institution,
+            ]
             if value
         )
-    for item in document.certifications:
-        evidence[item.id] = " ".join(
-            value for value in [item.name, item.issuer] if value
+    for certification in document.certifications:
+        evidence[certification.id] = " ".join(
+            value
+            for value in [certification.name, certification.issuer]
+            if value
         )
-    for item in document.languages:
-        evidence[item.id] = f"{item.name} {item.proficiency.value}"
+    for language in document.languages:
+        evidence[language.id] = f"{language.name} {language.proficiency.value}"
     for experience in document.experiences:
         evidence[experience.id] = (
             f"{experience.role_title} {experience.company_name}"
