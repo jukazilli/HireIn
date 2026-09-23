@@ -192,7 +192,7 @@ def test_synthetic_runner_parses_usage_cost_and_structural_eval(
     assert result.usage.reasoning_tokens == 10
 
     assert transport.headers is not None
-    assert secret in transport.headers.values()
+    assert any(secret in value for value in transport.headers.values())
     assert secret not in result.model_dump_json()
 
 
