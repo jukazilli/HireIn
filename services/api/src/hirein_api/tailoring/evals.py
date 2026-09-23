@@ -4,10 +4,14 @@ import re
 import unicodedata
 import uuid
 from collections import Counter
-from enum import StrEnum
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
+from hirein_api.tailoring.rewrite import (
+    ResumeRewriteCandidate,
+    ResumeRewriteBlock,
+    RewriteSection,
+)
 from hirein_api.tailoring.schemas import ResumeDocument, ResumeTailoringPreviewResponse
 
 _TOKEN_PATTERN = re.compile(r"[a-z0-9+#.]+")
@@ -37,41 +41,6 @@ _STOPWORDS = {
     "uma",
 }
 
-
-class RewriteSection(StrEnum):
-    SUMMARY = "SUMMARY"
-    HIGHLIGHT = "HIGHLIGHT"
-    EXPERIENCE_BULLET = "EXPERIENCE_BULLET"
-
-
-class ResumeRewriteBlock(BaseModel):
-    section: RewriteSection
-    text: str = Field(min_length=1, max_length=2000)
-    source_evidence_ids: list[uuid.UUID] = Field(min_length=1, max_length=20)
-    target_experience_id: uuid.UUID | None = None
-
-    @model_validator(mode="after")
-    def validate_target(self) -> "ResumeRewriteBlock":
-        if (
-            self.section == RewriteSection.EXPERIENCE_BULLET
-            and self.target_experience_id is None
-        ):
-            raise ValueError("EXPERIENCE_BULLET requires target_experience_id")
-        if (
-            self.section != RewriteSection.EXPERIENCE_BULLET
-            and self.target_experience_id is not None
-        ):
-            raise ValueError(
-                "target_experience_id is only valid for EXPERIENCE_BULLET"
-            )
-        return self
-
-
-class ResumeRewriteCandidate(BaseModel):
-    provider: str = Field(min_length=1, max_length=120)
-    model: str = Field(min_length=1, max_length=180)
-    prompt_version: str = Field(min_length=1, max_length=80)
-    blocks: list[ResumeRewriteBlock] = Field(min_length=1, max_length=200)
 
 
 class HumanRewriteReview(BaseModel):
