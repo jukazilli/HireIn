@@ -8,7 +8,8 @@
     "tools_disabled": true,
     "web_grounding_disabled": true,
     "file_uploads_disabled": true,
-    "provider_caching_disabled": true,
+    "provider_cache_not_explicitly_enabled": true,
+    "provider_cache_behavior_must_be_recorded": true,
     "single_turn_only": true,
     "production_default": null
   },
@@ -17,38 +18,42 @@
       "provider": "openai",
       "model": "gpt-6-luna",
       "benchmark_role": "cost_baseline",
-      "input_usd_per_million_tokens": 0.10,
-      "output_usd_per_million_tokens": 0.50,
+      "input_usd_per_million_tokens": 0.1,
+      "output_usd_per_million_tokens": 0.5,
       "structured_output": "json_schema_strict",
       "commercial_api_no_training_by_default": true,
       "standard_retention_note": "Abuse-monitoring logs may be retained for up to 30 days; eligible customers can use Zero Data Retention subject to endpoint/model limitations.",
       "official_sources": [
         "https://developers.openai.com/api/docs/models/gpt-6-luna",
         "https://developers.openai.com/api/docs/pricing",
-        "https://platform.openai.com/docs/guides/your-data"
-      ]
+        "https://platform.openai.com/docs/guides/your-data",
+        "https://developers.openai.com/api/docs/guides/prompt-caching"
+      ],
+      "cache_behavior_note": "Prompt caching is enabled by default on supported OpenAI models. HireIn does not set prompt_cache_key, prewarm, or extended retention. GPT-5.6+ documentation states a 30-minute minimum cache TTL; cached token usage must be recorded from the response."
     },
     {
       "provider": "openai",
       "model": "gpt-6-sol",
       "benchmark_role": "balanced_quality",
-      "input_usd_per_million_tokens": 2.00,
-      "output_usd_per_million_tokens": 10.00,
+      "input_usd_per_million_tokens": 2,
+      "output_usd_per_million_tokens": 10,
       "structured_output": "json_schema_strict",
       "commercial_api_no_training_by_default": true,
       "standard_retention_note": "Abuse-monitoring logs may be retained for up to 30 days; eligible customers can use Zero Data Retention subject to endpoint/model limitations.",
       "official_sources": [
         "https://developers.openai.com/api/docs/changelog",
         "https://developers.openai.com/api/docs/pricing",
-        "https://platform.openai.com/docs/guides/your-data"
-      ]
+        "https://platform.openai.com/docs/guides/your-data",
+        "https://developers.openai.com/api/docs/guides/prompt-caching"
+      ],
+      "cache_behavior_note": "Prompt caching is enabled by default on supported OpenAI models. HireIn does not set prompt_cache_key, prewarm, or extended retention. GPT-5.6+ documentation states a 30-minute minimum cache TTL; cached token usage must be recorded from the response."
     },
     {
       "provider": "anthropic",
       "model": "claude-sonnet-5",
       "benchmark_role": "balanced_quality",
-      "input_usd_per_million_tokens": 2.00,
-      "output_usd_per_million_tokens": 10.00,
+      "input_usd_per_million_tokens": 2,
+      "output_usd_per_million_tokens": 10,
       "structured_output": "json_schema",
       "commercial_api_no_training_by_default": true,
       "standard_retention_note": "Anthropic API inputs and outputs are automatically deleted within 30 days by default, subject to documented exceptions; approved customers may have Zero Data Retention arrangements.",
@@ -56,7 +61,8 @@
         "https://www.anthropic.com/news/claude-sonnet-5",
         "https://privacy.claude.com/en/articles/7996868-is-my-data-used-for-model-training",
         "https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data"
-      ]
+      ],
+      "cache_behavior_note": "HireIn does not send cache_control in the benchmark request. Any cache token counts returned by the provider are recorded rather than assumed to be zero."
     },
     {
       "provider": "google",
@@ -72,7 +78,8 @@
         "https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash",
         "https://ai.google.dev/gemini-api/docs/pricing",
         "https://ai.google.dev/gemini-api/docs/zdr"
-      ]
+      ],
+      "cache_behavior_note": "HireIn does not configure context caching. Interactions store=false disables interaction storage but is treated separately from any provider cache behavior."
     }
   ]
 }

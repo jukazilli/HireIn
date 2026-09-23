@@ -13,7 +13,8 @@ class ProviderBenchmarkRules(BaseModel):
     tools_disabled: bool
     web_grounding_disabled: bool
     file_uploads_disabled: bool
-    provider_caching_disabled: bool
+    provider_cache_not_explicitly_enabled: bool
+    provider_cache_behavior_must_be_recorded: bool
     single_turn_only: bool
     production_default: str | None = None
 
@@ -28,6 +29,7 @@ class ProviderBenchmarkCandidate(BaseModel):
     structured_output: str = Field(min_length=1, max_length=80)
     commercial_api_no_training_by_default: bool
     standard_retention_note: str = Field(min_length=1, max_length=1000)
+    cache_behavior_note: str = Field(min_length=1, max_length=1000)
     official_sources: list[str] = Field(min_length=1)
 
 
@@ -51,6 +53,10 @@ class ProviderBenchmarkRegistry(BaseModel):
             raise ValueError("real-data benchmark must require a paid commercial API")
         if not self.rules.free_consumer_tiers_forbidden_for_real_data:
             raise ValueError("free/consumer tiers must be forbidden for real-data benchmark")
+        if not self.rules.provider_cache_not_explicitly_enabled:
+            raise ValueError("HireIn must not explicitly enable provider cache in benchmark")
+        if not self.rules.provider_cache_behavior_must_be_recorded:
+            raise ValueError("provider cache behavior must be recorded in benchmark")
         return self
 
 

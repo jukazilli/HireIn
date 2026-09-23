@@ -98,7 +98,8 @@ Antes de enviar ao provider:
 - não enviar arquivos;
 - não habilitar web/search/grounding;
 - não habilitar ferramentas;
-- não habilitar cache persistente;
+- não habilitar cache explicitamente pelo HireIn;
+- registrar o comportamento/default de cache de cada provider;
 - não habilitar estado de conversa;
 - preferir `store=false` ou equivalente quando disponível.
 
@@ -124,6 +125,8 @@ Só depois de:
 Dados enviados à API não são usados para treinar modelos por padrão, salvo opt-in.
 
 O fluxo inicial deve usar somente endpoint stateless, `store=false`, sem tools/files/search e sem background mode.
+
+Prompt caching é habilitado por padrão em modelos OpenAI compatíveis. O HireIn não adiciona `prompt_cache_key`, prewarm ou retenção estendida por iniciativa própria; o benchmark registra tokens em cache quando o provider os reportar. Para famílias GPT-5.6+ a documentação atual informa TTL mínimo de 30 minutos para o cache de prompt. Esse comportamento precisa ser considerado separadamente de `store=false` e de ZDR.
 
 Abuse-monitoring logs podem conter conteúdo e, no padrão, podem ser retidos por até 30 dias. Zero Data Retention/Modified Abuse Monitoring depende de elegibilidade e configuração da organização.
 
@@ -152,8 +155,8 @@ Para perseguir ZDR, o adapter deve respeitar as restrições publicadas e evitar
 Na primeira rodada:
 
 - mesmo dataset;
-- mesmo `prompt-v1.md`;
-- mesmo schema `ResumeRewriteCandidate`;
+- mesmo `prompt-v2.md`;
+- mesmo schema de blocos gerados; metadata de benchmark é injetada pelo adapter;
 - mesma língua;
 - mesma informação de vaga;
 - mesmos `allowed_evidence_ids`;
