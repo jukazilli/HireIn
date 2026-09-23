@@ -187,3 +187,20 @@ Os previews são gravados em:
 ```
 
 O script usa `prompt-v2.md` e aceita somente entradas commitadas sob `evals/tailoring/fixtures/`. Ele não carrega API keys e não possui transporte HTTP.
+
+
+## Live synthetic benchmark
+
+A primeira chamada externa continua restrita às fixtures sintéticas.
+
+Exemplo para um único candidato:
+
+```bash
+uv run --package hirein-api python scripts/provider_benchmark.py \
+  --execute-network \
+  --candidate openai/gpt-6-luna
+```
+
+A credencial precisa existir somente no ambiente correspondente ao provider. O comando exige seleção explícita de cada candidato, rejeita input/preview fora de `evals/tailoring/fixtures/` e grava um relatório redacted em `.local-data/evals/tailoring/synthetic-live-report.json`.
+
+Nenhum benchmark externo é executado automaticamente pelo CI.
