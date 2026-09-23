@@ -98,9 +98,18 @@ def _markdown(reports: list[ResumeRewriteEvalReport]) -> str:
             "",
             "## Interpretation",
             "",
-            "- Structural PASS only proves references and targets stay inside the approved boundary.",
-            "- Anchor overlap is diagnostic and must not be treated as proof of factual correctness.",
-            "- Human factual precision must be 5/5 with zero unsupported claims to pass the human gate.",
+            (
+                "- Structural PASS only proves references and targets stay inside "
+                "the approved boundary."
+            ),
+            (
+                "- Anchor overlap is diagnostic and must not be treated as proof "
+                "of factual correctness."
+            ),
+            (
+                "- Human factual precision must be 5/5 with zero unsupported claims "
+                "to pass the human gate."
+            ),
             "- This report intentionally does not select a winning provider.",
             "",
         ]
